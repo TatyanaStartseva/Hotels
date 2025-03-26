@@ -1,8 +1,8 @@
 from http.client import HTTPException
-from sys import prefix
-from pydantic import  Field
 from fastapi import APIRouter , Query,Body
-from schemas.hotels import Hotel, HotelPatch
+
+from src.api.dependencies import PaginationDep
+from src.schemas.hotels import Hotel, HotelPatch
 
 
 router = APIRouter(prefix="/hotels",tags=['Отели'])
@@ -20,23 +20,22 @@ hotels = [
 
 @router.get('',summary='Получение информации об отелях')
 def get_hotels(
-        id:int|None = Query(None),
-        title:str|None= Query(None),
-        name:str|None = Query(None),
-        page:int|None = Query(1,description='Номер страницы'),
-        page_per:int | None = Query(10, descriprion='Кол-во отелей на странице')
+        pagination: PaginationDep,
+        id: int | None = Query(None, description="id"),
+        title: str | None = Query(None, description="Название отеля"),
+
 ):
-    global hotels
     hotels_ = []
-    if id is not None:
-        hotels_ = [hotel for hotel in hotels_ if hotel['id'] == id]
+    for hotel in hotels:
+        if id and hotel["id"] != id:
+            continue
+        if title and hotel["title"] != title:
+            continue
+        hotels_.append(hotel)
 
-    if title is not None:
-        hotels_= [hotel for hotel in hotels_ if hotel["title"] == title]
-
-    start = (page - 1) * page_per
-    end = start + page_per
-    return hotels_[start:end]
+    if pagination.page and pagination.per_page:
+        return hotels_[pagination.per_page * (pagination.page - 1):][:pagination.per_page]
+    return hotels_
 
 
 @router.delete("/{hotel_id}",summary='Удаление отеля из базы данных')
