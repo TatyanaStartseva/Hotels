@@ -2,11 +2,12 @@ from http.client import HTTPException
 from fastapi import APIRouter , Query,Body
 
 from src.api.dependencies import PaginationDep
+from src.database import async_session_maker
+from src.models.hotels import HotelsOrm
 from src.schemas.hotels import Hotel, HotelPatch
-
+from sqlalchemy import insert, select
 
 router = APIRouter(prefix="/hotels",tags=['Отели'])
-
 hotels = [
      {"id": 1, "title": "Sochi", "name": "sochi"},
      {"id": 2, "title": "Дубай", "name": "dubai"},
@@ -19,23 +20,29 @@ hotels = [
 
 
 @router.get('',summary='Получение информации об отелях')
-def get_hotels(
+async def get_hotels(
         pagination: PaginationDep,
         id: int | None = Query(None, description="id"),
         title: str | None = Query(None, description="Название отеля"),
 
 ):
-    hotels_ = []
-    for hotel in hotels:
-        if id and hotel["id"] != id:
-            continue
-        if title and hotel["title"] != title:
-            continue
-        hotels_.append(hotel)
+    per_page = pagination.per_page or 5
+    async with async_session_maker() as session:
+        query = select(HotelsOrm)
+        if id:
+            query = query.filter_by(id=id)
+        if title:
+            query = query.filter_by(title=title)
+        query = (
+            query
+            .limit(per_page)
+            .offset(pagination.per_page * (pagination.page - 1))
+        )
 
-    if pagination.page and pagination.per_page:
-        return hotels_[pagination.per_page * (pagination.page - 1):][:pagination.per_page]
-    return hotels_
+        result = await session.execute(query)
+        hotels = result.scalars().all()
+        return hotels
+
 
 
 @router.delete("/{hotel_id}",summary='Удаление отеля из базы данных')
@@ -45,9 +52,12 @@ def delete_hotel(hotel_id:int ):
     return hotels_
 
 @router.post("",summary='Добавление нового отеля')
-def post_hotels(hotel_data: Hotel = Body(openapi_examples={"1":{"summary":"Сочи", 'value':{'title':"Сочи",'name':'Sochi'}}})):
-    global hotels
-    hotels.append({"id": hotels[-1]['id']+1,"title":hotel_data.title})
+async def post_hotels(hotel_data: Hotel = Body(openapi_examples={"1":{"summary":"Сочи", 'value':{'title':"Сочи",'location':'Sochi'}}})):
+    async with async_session_maker() as session:
+        add_hotel_stmt = insert(HotelsOrm).values(**hotel_data.model_dump())
+        print(add_hotel_stmt.compile(compile_kwargs={"literal_binds":True}))
+        await session.execute(add_hotel_stmt)
+        await session.commit()
     return {'status':"ok"}
 
 
