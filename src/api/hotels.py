@@ -27,8 +27,14 @@ async def get_hotels(
         title: str | None = Query(None, description="Название отеля"),
         location: str |None = Query(None, description="Адрес"),
 ):
+    per_page = pagination.per_page or 5
     async with async_session_maker() as session:
-        return await HotelsRepository(session).get_all()
+        return await HotelsRepository(session).get_all(
+            location=location,
+            title=title,
+            limit = per_page,
+            offset = per_page * (pagination.page - 1)
+        )
     # per_page = pagination.per_page or 5
     # async with async_session_maker() as session:
     #     query = select(HotelsOrm)
@@ -59,11 +65,9 @@ def delete_hotel(hotel_id:int ):
 @router.post("",summary='Добавление нового отеля')
 async def post_hotels(hotel_data: Hotel = Body(openapi_examples={"1":{"summary":"Сочи", 'value':{'title':"Сочи",'location':'Sochi'}}})):
     async with async_session_maker() as session:
-        add_hotel_stmt = insert(HotelsOrm).values(**hotel_data.model_dump())
-        print(add_hotel_stmt.compile(compile_kwargs={"literal_binds":True}))
-        await session.execute(add_hotel_stmt)
+        hotel = await HotelsRepository(session).add(**hotel_data)
         await session.commit()
-    return {'status':"ok"}
+    return {'status':"ok", "date":hotel}
 
 
 @router.patch("/{id}", summary="Частичное обновление данных об отеле",
