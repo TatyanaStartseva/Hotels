@@ -35,37 +35,19 @@ async def get_hotels(
             limit = per_page,
             offset = per_page * (pagination.page - 1)
         )
-    # per_page = pagination.per_page or 5
-    # async with async_session_maker() as session:
-    #     query = select(HotelsOrm)
-    #     if id:
-    #         query = query.filter_by(id=id)
-    #     if title:
-    #         query = query.filter_by(title=title)
-    #     if location:
-    #         query = query.filter(HotelsOrm.location.ilike(f"%{location}%"))
-    #     query = (
-    #         query
-    #         .limit(per_page)
-    #         .offset(per_page * (pagination.page - 1))
-    #     )
-    #
-    #     result = await session.execute(query)
-    #     hotels = result.scalars().all()
-    #     return hotels
-
 
 
 @router.delete("/{hotel_id}",summary='Удаление отеля из базы данных')
-def delete_hotel(hotel_id:int ):
-    global hotels
-    hotels_ = [hotel for hotel in hotels if hotel['id']!= hotel_id]
-    return hotels_
+async def delete_hotel(hotel_id:int ):
+    async with async_session_maker() as session:
+        result = await HotelsRepository(session).delete(id=hotel_id)
+        await session.commit()
+    return result
 
 @router.post("",summary='Добавление нового отеля')
 async def post_hotels(hotel_data: Hotel = Body(openapi_examples={"1":{"summary":"Сочи", 'value':{'title':"Сочи",'location':'Sochi'}}})):
     async with async_session_maker() as session:
-        hotel = await HotelsRepository(session).add(**hotel_data)
+        hotel = await HotelsRepository(session).add(hotel_data)
         await session.commit()
     return {'status':"ok", "date":hotel}
 
@@ -83,11 +65,11 @@ def patch_hotels(id:int, hotel_data:HotelPatch):
 
 
 @router.put("/{id}",summary='Обновление данных об отеле')
-def patch_hotels(id: int,hotel_data:Hotel):
-    global hotels
-    for hotel in hotels:
-        if hotel_data.title and hotel_data.name and hotel['id'] == id:
-            hotel['title'] = hotel_data.title
-            hotel['name']= hotel_data.name
-            return {"status":"Ok"}
-    raise HTTPException(status_code=404, detail="Hotel not found")
+async def patch_hotels(id: int,hotel_data:Hotel):
+    async with async_session_maker() as session:
+        hotel = await HotelsRepository(session).edit(hotel_data,id= id)
+        if hotel["status"] =='success':
+            await session.commit()
+            return {"status": "Ok"}
+        else:
+            raise HTTPException(status_code=404, detail="Hotel not found")
