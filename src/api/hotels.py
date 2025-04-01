@@ -54,14 +54,14 @@ async def post_hotels(hotel_data: Hotel = Body(openapi_examples={"1":{"summary":
 
 @router.patch("/{id}", summary="Частичное обновление данных об отеле",
      description="<h1>Тут мы частично обновляем данные об отеле: можно отправить name, а можно title</h1>")
-def patch_hotels(id:int, hotel_data:HotelPatch):
-    global hotels
-    for hotel in hotels:
-        if hotel_data.title and hotel['id'] == id:
-            hotel['title'] = hotel_data.title
-        if hotel_data.name and hotel['id'] == id:
-            hotel['name']= hotel_data.name
-    return {"status":"Ok"}
+async def patch_hotels(id:int, hotel_data:HotelPatch):
+    async with async_session_maker() as session:
+        hotel = await HotelsRepository(session).edit(hotel_data, exclude_unset=True, id = id)
+        if hotel["status"] == 'success':
+            await session.commit()
+            return {"status": "Ok"}
+        else:
+            raise HTTPException(status_code=404, detail="Hotel not found")
 
 
 @router.put("/{id}",summary='Обновление данных об отеле')
@@ -73,3 +73,9 @@ async def patch_hotels(id: int,hotel_data:Hotel):
             return {"status": "Ok"}
         else:
             raise HTTPException(status_code=404, detail="Hotel not found")
+
+
+@router.get("/{hotel_id}")
+async def get_hotel(hotel_id:int):
+    async with async_session_maker() as session:
+        return await HotelsRepository(session).get_hotel(hotel_id)

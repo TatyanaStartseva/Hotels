@@ -24,20 +24,27 @@ class HotelsRepository(BaseRepository):
             hotels = result.scalars().all()
             return hotels
 
+
+    async def get_hotel(self,id:int):
+        query = select(self.model).filter_by(id=id)
+        result = await self.session.execute(query)
+        return result.scalar_one()
+
+
     async def add(self,data :BaseModel):
         add_data_stmt = insert(self.model).values(**data.model_dump()).returning(self.model)
         print(add_data_stmt.compile(compile_kwargs={"literal_binds": True}))
         result = await self.session.execute(add_data_stmt)
         return result.scalar_one()
 
-    async def edit(self,data:BaseModel,**filter_by):
+    async def edit(self,data:BaseModel,exclude_unset:bool = False, **filter_by):
        try:
            query = select(self.model).filter_by(**filter_by)
            res = await self.session.execute(query)
            obj = res.scalars().first()
            if obj is None:
                return {'status': 'error', "message": "Объект не найден "}
-           query = update(self.model).where(self.model.id == obj.id).values(**data.model_dump())
+           query = update(self.model).where(self.model.id == obj.id).values(**data.model_dump(exclude_unset=exclude_unset))
            await self.session.execute(query)
            return {"status":"success"}
        except Exception as e:
