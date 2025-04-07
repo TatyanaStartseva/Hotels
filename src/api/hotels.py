@@ -5,7 +5,7 @@ from src.api.dependencies import PaginationDep
 from src.database import async_session_maker
 from src.models.hotels import HotelsOrm
 from src.repositories.hotels import HotelsRepository
-from src.schemas.hotels import Hotel, HotelPatch
+from src.schemas.hotels import Hotel, HotelPatch, HotelAdd
 from sqlalchemy import insert, select
 
 router = APIRouter(prefix="/hotels",tags=['Отели'])
@@ -45,7 +45,7 @@ async def delete_hotel(hotel_id:int ):
     return result
 
 @router.post("",summary='Добавление нового отеля')
-async def post_hotels(hotel_data: Hotel = Body(openapi_examples={"1":{"summary":"Сочи", 'value':{'title':"Сочи",'location':'Sochi'}}})):
+async def post_hotels(hotel_data: HotelAdd = Body(openapi_examples={"1":{"summary":"Сочи", 'value':{'title':"Сочи",'location':'Sochi'}}})):
     async with async_session_maker() as session:
         hotel = await HotelsRepository(session).add(hotel_data)
         await session.commit()
@@ -65,7 +65,7 @@ async def patch_hotels(id:int, hotel_data:HotelPatch):
 
 
 @router.put("/{id}",summary='Обновление данных об отеле')
-async def patch_hotels(id: int,hotel_data:Hotel):
+async def patch_hotels(id: int,hotel_data:HotelAdd):
     async with async_session_maker() as session:
         hotel = await HotelsRepository(session).edit(hotel_data,id= id)
         if hotel["status"] =='success':
