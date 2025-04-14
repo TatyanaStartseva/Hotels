@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Response, Request
 from src.database import async_session_maker
 from src.repositories.users import UsersRepository
 from src.schemas.users import UserRequestAdd, UserAdd
-from src.services.auth import AuthService
+from src.services.auth import AuthService, decode_token
 
 router = APIRouter(prefix='/auth',tags=['Авторизация и аутенфикация'] )
 
@@ -34,7 +34,11 @@ async def login_user(
         response.set_cookie("access_token", access_token)
         return {"access_token": access_token}
 
-@router.get("/auth_token")
-def auth_token(request:Request):
+@router.get("/only_auth")
+async def only_auth(request:Request):
     token = request.cookies.get("access_token")
-    return (f"{token}")
+    data = AuthService().encode_token(token)
+    user_id = data["user_id"]
+    async with async_session_maker() as session:
+        user = await UsersRepository(session).get_one_or_none(id=user_id)
+        return user
