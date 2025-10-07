@@ -5,7 +5,7 @@ from src.database import async_session_maker
 from src.repositories.users import UsersRepository
 from src.schemas.users import UserRequestAdd, UserAdd
 from src.services.auth import AuthService
-
+from sqlalchemy.exc import IntegrityError
 router = APIRouter(prefix='/auth',tags=['Авторизация и аутенфикация'] )
 
 
@@ -14,10 +14,14 @@ async def register_user(
         data: UserRequestAdd,
 ):
     hashed_password = AuthService().hash_password(data.password)
-    new_user_data = UserAdd(email=data.email, hashed_password=hashed_password)
     async with async_session_maker() as session:
-        await UsersRepository(session).add(new_user_data)
-        await session.commit()
+        try:
+            new_user_data = UserAdd(email=data.email, hashed_password=hashed_password)
+            await UsersRepository(session).add(new_user_data)
+            await session.commit()
+        except IntegrityError:
+            await session.rollback()
+            raise HTTPException(status_code=409, detail="Пользователь с таким email уже существует")
 
     return {"status": "OK"}
 

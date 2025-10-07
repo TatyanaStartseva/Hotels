@@ -20,6 +20,7 @@ async def get_hotels(
     per_page = pagination.per_page or 5
     async with async_session_maker() as session:
         return await HotelsRepository(session).get_all(
+            id =id,
             location=location,
             title=title,
             limit = per_page,
@@ -43,7 +44,7 @@ async def post_hotels(hotel_data: HotelAdd = Body(openapi_examples={"1":{"summar
 
 
 @router.patch("/{id}", summary="Частичное обновление данных об отеле",
-     description="<h1>Тут мы частично обновляем данные об отеле: можно отправить name, а можно title</h1>")
+     description="<h1>Тут мы частично обновляем данные об отеле</h1>")
 async def patch_hotels(id:int, hotel_data:HotelPatch):
     async with async_session_maker() as session:
         hotel = await HotelsRepository(session).edit(hotel_data, exclude_unset=True, id = id)
