@@ -7,15 +7,14 @@ from alembic import context
 
 from src.config import settings
 from src.database import Base
-from src.models.hotels import HotelsOrm
+from src.models.hotels import HotelsOrm # импортируем чтобы правильно произошло наследование, чтобы Base видела, что другие orm классы он нее наследовались
 from src.models.rooms import RoomsOrm
 from src.models.users import UsersOrm
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
-config.set_main_option("sqlalchemy.url", f"{settings.DB_URL}?async_fallback=True")
-
+config.set_main_option("sqlalchemy.url", f"{settings.DB_URL}?async_fallback=True") # переопределяем движок, по умолчанию в alembic.ini там заглушка на движок, и данные о БД
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
@@ -25,7 +24,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = Base.metadata
+target_metadata = Base.metadata # нужно, чтобы он видел все связи с дочерними орм схемами
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

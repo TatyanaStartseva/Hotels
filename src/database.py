@@ -6,5 +6,5 @@ from src.config import settings
 engine = create_async_engine(settings.DB_URL)
 async_session_maker = async_sessionmaker(bind=engine,expire_on_commit=False)
 
-class Base(DeclarativeBase):
+class Base(DeclarativeBase): #содержит данные о всех миграциях, копится информация о всех таблицах, метаданных, что у нас есть
     pass

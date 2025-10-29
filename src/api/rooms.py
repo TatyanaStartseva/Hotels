@@ -3,8 +3,6 @@ from sys import prefix
 from fastapi import APIRouter, Query, Body, HTTPException
 
 from src.api.dependencies import DBDep
-from src.database import async_db_maker
-from src.repositories.rooms import RoomsRepositories
 from src.schemas.rooms import RoomAdd, PatchRoom, RoomAddRequest, PatchRoomRequest
 from src.models.rooms import RoomsOrm
 

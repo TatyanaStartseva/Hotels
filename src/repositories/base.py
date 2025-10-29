@@ -4,17 +4,17 @@ from sqlalchemy import select, insert, update, delete
 
 
 class BaseRepository:
-    model = None
+    model = None  # пока у нас None, но в дочерних классах, они будут наследоваться от базового репозитория и переопределять модель, она будет подставляться в запросы
     schema: BaseModel = None
 
-    def __init__(self,session ):
+    def __init__(self,session ): # открываем одну сессию, потому что если мы будем вызывать методы и в каждом методе будет создаваться сессия, то будет блокироваться БД, чтобы что-то сделать, то при большом кол-ве запросов она зависнет
         self.session = session
 
 
     async def get_filtered(self, **filter_by):
             query = select(self.model).filter_by(**filter_by)
             result = await self.session.execute(query)
-            return [self.schema.model_validate(model, from_attributes=True ) for model in result.scalars().all()]
+            return [self.schema.model_validate(model, from_attributes=True ) for model in result.scalars().all()] # model_validate переобразует orm объект в pydantic schemas, реализуем паттерн DataMapper.  from_attributes нужен чтобы из полей класса ORM привести к виду словаря pydantic
 
 
     async def get_all(self, *args, **kwargs):

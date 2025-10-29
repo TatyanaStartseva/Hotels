@@ -3,7 +3,9 @@ import uvicorn
 from fastapi.openapi.docs import get_swagger_ui_html
 import sys
 from pathlib import Path
+# чтобы интерпретатор знал в какой папке он находится, и какая директория выше него пишем :
 sys.path.append(str(Path(__file__).parent.parent))
+
 from src.config import settings
 from src.api.hotels import router as router_hotels
 from src.api.auth import router as router_auth

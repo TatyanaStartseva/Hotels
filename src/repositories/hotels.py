@@ -17,7 +17,7 @@ class HotelsRepository(BaseRepository):
             if title:
                 query = query.filter_by(title=title)
             if location:
-                query = query.filter(self.model.location.ilike(f"%{location}%"))
+                query = query.filter(self.model.location.ilike(f"%{location}%")) # ilike чтобы при вводе данных они были регистро независимые
             query = (
                 query
                 .limit(limit)

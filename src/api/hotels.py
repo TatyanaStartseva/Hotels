@@ -63,3 +63,26 @@ async def patch_hotels(id: int,hotel_data:HotelAdd,db : DBDep):
 @router.get("/{hotel_id}")
 async def get_hotel(hotel_id:int,db : DBDep):
     return await db.hotels.get_hotel(hotel_id)
+
+@router.post("/ingest/amadeus")
+async def ingest_from_amadeus(
+    db: DBDep,
+    city: str = Query(...),
+    check_in: str = Query(...),
+    check_out: str = Query(...),
+    adults: int = Query(1, ge=1, le=9),
+    max_hotels: int = Query(600, ge=1, le=2000),  # ← опционально
+):
+    from src.services.ingest_amadeus import ingest_hotels_from_amadeus
+    summary = await ingest_hotels_from_amadeus(
+        db, city_code=city, check_in=check_in, check_out=check_out, adults=adults
+    )
+    return {"status": "ok", **summary}
+
+from src.clients.amadeus import AmadeusClient
+@router.get("/health/amadeus")
+async def amadeus_health():
+    am = AmadeusClient()
+    # просто пробуем получить токен
+    await am._ensure_token()
+    return {"status": "ok"}
