@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     DB_PASS:str
     AMADEUS_KEY:str
     AMADEUS_SECRET :str
+    OFFERS_TTL_MINUTES:int
     @property
     def DB_URL(self):
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

@@ -16,6 +16,7 @@ class AmadeusClient:
             raise RuntimeError("AMADEUS_KEY / AMADEUS_SECRET отсутствуют")
         self._token: str | None = None
         self._exp: float = 0.0
+        self._city_cache: dict[str, tuple[str, float]] = {}
 
     async def _ensure_token(self) -> None:
         if self._token and (self._exp - time.time() > 60):
@@ -157,3 +158,71 @@ class AmadeusClient:
         return await self.offers_by_hotel_ids(
             hotel_ids=ids, check_in=check_in, check_out=check_out, adults=adults
         )
+
+
+    async def resolve_city_code(self, keyword: str) -> str | None:
+        """
+        Moscow/Москва -> MOW, Sochi/Сочи -> AER и т.п.
+        Без параметров page[limit]/sort, с попытками в двух справочниках.
+        """
+        kw = (keyword or "").strip()
+        if not kw:
+            return None
+
+        # кэш 30 минут
+        now = time.time()
+        if not hasattr(self, "_city_cache") or self._city_cache is None:
+            self._city_cache = {}
+        cached = self._city_cache.get(kw.lower())
+        if cached and cached[1] > now:
+            return cached[0]
+
+        await self._ensure_token()
+        headers = {
+            "Authorization": f"Bearer {self._token}",
+            "Accept-Language": "ru,en",
+        }
+
+        async with httpx.AsyncClient(timeout=20) as client:
+            # 1) Справочник городов: /v1/reference-data/locations/cities
+            #    Поддерживает только keyword (и, опционально, countryCode), пагинация через meta.links.next
+            url = f"{self.BASE}/v1/reference-data/locations/cities"
+            params = {"keyword": kw}
+            while url:
+                r = await client.get(url, params=params, headers=headers)
+                # после первого запроса дальше используем next как абсолютный URL → params=None
+                params = None
+                print(r.text)
+                if r.status_code < 400:
+                    payload = r.json()
+                    for item in (payload.get("data") or []):
+                        code = (item.get("iataCode") or "").upper()
+                        if len(code) == 3:
+                            self._city_cache[kw.lower()] = (code, now + 1800)
+                            return code
+                    links = ((payload.get("meta") or {}).get("links") or {})
+                    url = links.get("next")
+                else:
+                    break  # если 4xx/5xx — падаем на fallback
+
+            # 2) Общий справочник локаций: /v1/reference-data/locations?subType=CITY,AIRPORT
+            #    Тоже только keyword/subType, без sort/limit; пагинация через meta.links.next
+            url = f"{self.BASE}/v1/reference-data/locations"
+            params = {"keyword": kw, "subType": "CITY,AIRPORT"}
+            while url:
+                r = await client.get(url, params=params, headers=headers)
+                params = None
+                print("no params", r.text)
+                if r.status_code < 400:
+                    payload = r.json()
+                    for item in (payload.get("data") or []):
+                        code = (item.get("iataCode") or "").upper()
+                        if len(code) == 3:
+                            self._city_cache[kw.lower()] = (code, now + 1800)
+                            return code
+                    links = ((payload.get("meta") or {}).get("links") or {})
+                    url = links.get("next")
+                else:
+                    break
+
+        return None
