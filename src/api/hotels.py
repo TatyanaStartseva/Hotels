@@ -1,3 +1,4 @@
+from black import assert_equivalent
 from fastapi import HTTPException       # ✅ правильное исключение FastAPI
 
 from fastapi import APIRouter , Query,Body
@@ -111,8 +112,18 @@ async def ingest_from_amadeus(
     max_hotels: int = Query(600, ge=1, le=2000),  # ← опционально
 ):
     from src.services.ingest_amadeus import ingest_hotels_from_amadeus
+    #приводим город к 3 буквенному значению
+    city_raw = city.strip()
+    if len(city_raw) == 3 and city_raw.isalpha():
+        code = city_raw.upper()
+    else:
+        am = AmadeusClient()
+        code = await am.resolve_city_code(city_raw)
+        if not code:
+            raise HTTPException(status_code = 400, detail=f"Не удалось определить IATA-код для '{city}'")
+
     summary = await ingest_hotels_from_amadeus(
-        db, city_code=city, check_in=check_in, check_out=check_out, adults=adults
+        db, city_code=code, check_in=check_in, check_out=check_out, adults=adults
     )
     return {"status": "ok", **summary}
 
