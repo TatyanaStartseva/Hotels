@@ -23,6 +23,7 @@ def _extract_hotels(items: Any) -> list[dict]:
                         "location": getattr(h, "location", None)})
     return out
 
+
 async def _ensure_hotel(db: DBManager, *, title: str, location: str) -> bool:
     """Возвращает True если создали новый отель. Работает через твои get_all/add."""
     existing = await db.hotels.get_all(title=title, location=location, id=None, limit=1, offset=0)
@@ -32,7 +33,6 @@ async def _ensure_hotel(db: DBManager, *, title: str, location: str) -> bool:
     await db.hotels.add(HotelAdd(title=title, location=location))
     return True
 
-# src/services/search_hotels.py
 
 async def search_hotels_catalog_read_through(
     db: DBManager, *, city_code: str, check_in: str, check_out: str

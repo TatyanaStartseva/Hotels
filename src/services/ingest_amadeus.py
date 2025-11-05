@@ -1,4 +1,3 @@
-# src/services/ingest_amadeus.py
 from src.clients.amadeus import AmadeusClient
 from src.utils.db_manager import DBManager
 from src.schemas.hotels import HotelAdd
