@@ -1,19 +1,24 @@
-from fastapi import HTTPException
-
 from fastapi import APIRouter
-from src.schemas.bookings import BookingsAdd, Bookings
-from src.api.dependencies import DBDep
-router= APIRouter(prefix="/bookings",tags=['Бронирование'])
 
-@router.post('',summary='Бронирование отеля')
-async def post_bookings(bookings_data: BookingsAdd, db : DBDep):
-    room_price = await db.rooms.get_room(bookings_data.room_id)
-    exist_user = await db.users.get_one_or_none(id = bookings_data.user_id)
+from src.api.dependencies import DBDep, UserIdDep
+from src.schemas.bookings import BookingAddRequest, BookingAdd
 
-    if exist_user is None:
-        return  HTTPException(status_code=404, detail="User not found")
+router = APIRouter(prefix="/bookings", tags=["Бронирования"])
 
-    bookings = Bookings(**bookings_data.model_dump(), price = room_price.price)
-    bookings_add = await db.bookings.add(bookings)
+
+@router.post("")
+async def add_booking(
+        user_id: UserIdDep,
+        db: DBDep,
+        booking_data: BookingAddRequest,
+):
+    room = await db.rooms.get_one_or_none(id=booking_data.room_id)
+    room_price: int = room.price
+    _booking_data = BookingAdd(
+        user_id=user_id,
+        price=room_price,
+        **booking_data.model_dump(),
+    )
+    booking = await db.bookings.add(_booking_data)
     await db.commit()
-    return {"status": "ok", "saved": bookings_add}
+    return {"status": "OK", "data": booking}
