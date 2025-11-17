@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from src.repositories.hotels import HotelsRepository
 from src.repositories.rooms import RoomsRepositories
 from src.repositories.users import UsersRepository
-
+from src.repositories.bookings import BookingsRepository
 
 class DBManager:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
@@ -15,14 +15,16 @@ class DBManager:
         self.hotels: Optional[HotelsRepository] = None
         self.rooms: Optional[RoomsRepositories] = None
         self.users: Optional[UsersRepository] = None
+        self.bookings: Optional[BookingsRepository] = None
 
     async def __aenter__(self):
         # создаём новую асинхронную сессию
         self.session = self.session_factory()
         # пробрасываем одну и ту же сессию в репозитории
         self.hotels = HotelsRepository(self.session)
-        self.rooms = RoomsRepositories(self.session)  # или RoomsRepository
+        self.rooms = RoomsRepositories(self.session)
         self.users = UsersRepository(self.session)
+        self.bookings = BookingsRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb):

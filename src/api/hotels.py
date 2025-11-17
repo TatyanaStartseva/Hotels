@@ -1,12 +1,14 @@
+from typing import Literal
+
 from black import assert_equivalent
-from fastapi import HTTPException       # ✅ правильное исключение FastAPI
+from fastapi import HTTPException
 
 from fastapi import APIRouter , Query,Body
 
 from src.api.dependencies import PaginationDep
 from src.schemas.hotels import Hotel, HotelPatch, HotelAdd
-from src.api.dependencies import DBDep
 from src.clients.amadeus import AmadeusClient
+from src.services.search_both import search_hotels_read_through_both
 
 router = APIRouter(prefix="/hotels",tags=['Отели'])
 from datetime import date
@@ -38,7 +40,7 @@ async def delete_hotel(hotel_id:int,db : DBDep ):
     await db.commit()
     return result
 
-
+# НУЖНО ЧТОБЫ ОН ТОЖЕ ПЕРЕДЕЛЫВАЛ ВБИТЫЙ ГОРОД ПО 3 БУКВЫ
 @router.post("", summary='Добавление нового отеля')
 async def post_hotels(
     db: DBDep,
@@ -128,33 +130,37 @@ async def ingest_from_amadeus(
     return {"status": "ok", **summary}
 
 
-@router.get("/actions/search", summary="Поиск/пополнение каталога отелей (только hotels)")
-async def search_hotels(
+@router.get("/actions/search", summary="Поиск отелей + пополнение каталога (Amadeus/Xotelo/both)")
+async def search_hotels_both(
     db: DBDep,
-    city: str = Query(..., description="IATA (PAR/MOW) или имя города (Moscow/Krasnodar)"),
+    city: str = Query(..., description="Город: Moscow/Москва/или IATA (MOW)"),
     check_in: str = Query(..., description="YYYY-MM-DD"),
     check_out: str = Query(..., description="YYYY-MM-DD"),
+    adults: int = Query(1, ge=1, le=9),
+    providers: Literal["amadeus", "xotelo", "both"] = Query("both"),
+    # провайдер-специфичные параметры:
+    max_hotels_amadeus: int = Query(400, ge=1, le=1200),
+    limit_hotels_xotelo: int = Query(80, ge=1, le=200),
+    with_rates: bool = Query(False, description="Подтянуть цены Xotelo (/rates) — медленнее"),
+    alias_location: bool = Query(False, description='Сохранять алиасы в location (например "MOW Moscow Москва")'),
 ):
+    # валидация дат
     try:
-        din = date.fromisoformat(check_in)
-        dout = date.fromisoformat(check_out)
+        din = date.fromisoformat(check_in); dout = date.fromisoformat(check_out)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Дата должна быть в формате YYYY-MM-DD")
+        raise HTTPException(status_code=400, detail="Формат дат YYYY-MM-DD")
     if dout <= din:
         raise HTTPException(status_code=400, detail="check_out должен быть позже check_in")
 
-    city_raw = city.strip()
-
-    if len(city_raw) == 3 and city_raw.isalpha():
-        code = city_raw.upper()
-    else:
-        am = AmadeusClient()
-        code = await am.resolve_city_code(city_raw)  # ← передаём исходную строку
-        if not code:
-            raise HTTPException(status_code=400, detail=f"Не удалось определить IATA-код для '{city}'")
-
-    city_norm = code
-
-    return await search_hotels_catalog_read_through(
-        db, city_code=city_norm, check_in=check_in, check_out=check_out
+    return await search_hotels_read_through_both(
+        db=db,
+        city_input=city.strip(),
+        check_in=check_in,
+        check_out=check_out,
+        adults=adults,
+        providers=providers,
+        max_hotels_amadeus=max_hotels_amadeus,
+        limit_hotels_xotelo=limit_hotels_xotelo,
+        with_rates=with_rates,
+        alias_location=alias_location,
     )
