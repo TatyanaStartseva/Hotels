@@ -1,3 +1,4 @@
+// hotels-frontend/src/pages/LoginPage.tsx
 import { FormEvent, useState } from "react";
 import { login, register } from "../api/auth";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,7 @@ export default function LoginPage() {
         await register({ email, password });
         await login({ email, password });
       }
+      // 👉 после успешного логина идём на главную, а не сразу в брони
       navigate("/");
     } catch {
       alert("Ошибка авторизации");
@@ -36,8 +38,7 @@ export default function LoginPage() {
             onChange={e => setEmail(e.target.value)}
           />
         </div>
-
-        <div>
+        <div style={{ marginTop: 10 }}>
           <input
             type="password"
             placeholder="пароль"
@@ -45,14 +46,14 @@ export default function LoginPage() {
             onChange={e => setPassword(e.target.value)}
           />
         </div>
-
-        <button type="submit">
+        <button type="submit" style={{ marginTop: 10 }}>
           {mode === "login" ? "Войти" : "Зарегистрироваться"}
         </button>
       </form>
 
       <button
         style={{ marginTop: 10 }}
+        type="button"
         onClick={() =>
           setMode(mode === "login" ? "register" : "login")
         }

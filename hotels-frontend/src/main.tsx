@@ -5,6 +5,10 @@ import LoginPage from "./pages/LoginPage";
 import HotelsPage from "./pages/HotelsPage";
 import HotelPage from "./pages/HotelPage";
 import BookingsPage from "./pages/BookingsPage";
+import { initAuthFromStorage } from "./api/auth";   // ← добавили
+
+// при старте приложения подтягиваем токен из localStorage (если был)
+initAuthFromStorage();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

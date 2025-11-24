@@ -6,8 +6,26 @@ export interface AuthPayload {
   password: string;
 }
 
+// сохраняем токен и навешиваем его на все запросы axios
+function saveToken(token: string) {
+  api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  localStorage.setItem("access_token", token);
+}
+
+// инициализируем авторизацию при загрузке приложения (если токен уже был)
+export function initAuthFromStorage() {
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  }
+}
+
 export async function login(data: AuthPayload) {
   const res = await api.post("/auth/login", data);
+  const token = res.data?.access_token;
+  if (token) {
+    saveToken(token);
+  }
   return res.data;
 }
 
