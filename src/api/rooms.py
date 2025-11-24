@@ -2,7 +2,7 @@ from sys import prefix
 
 from fastapi import APIRouter, Query, Body, HTTPException
 
-from src.api.dependencies import DBDep
+from src.api.dependencies import DBDep, AdminDep
 from src.schemas.rooms import RoomAdd, PatchRoom, RoomAddRequest, PatchRoomRequest
 from src.models.rooms import RoomsOrm
 
@@ -18,7 +18,7 @@ async def get_room(hotel_id:int, room_id:int, db : DBDep):
     return await db.rooms.get_one_or_none(id=room_id,hotel_id=hotel_id)
 
 @router.post("/{hotel_id}/rooms", summary='Добавление комнаты')
-async def create_room(hotel_id: int , db : DBDep, room_data: RoomAddRequest = Body(openapi_examples={"1": {"summary": "Сочи", 'value': { 'title': "Люкс",
+async def create_room(hotel_id: int , db : DBDep, admin_id: AdminDep,room_data: RoomAddRequest = Body(openapi_examples={"1": {"summary": "Сочи", 'value': { 'title': "Люкс",
                                                                                                    'price': 150,
                                                                                                    "quantity": 2}}})):
     _room_data= RoomAdd(hotel_id=hotel_id, **room_data.model_dump())
@@ -27,13 +27,13 @@ async def create_room(hotel_id: int , db : DBDep, room_data: RoomAddRequest = Bo
     return {'status': "ok", "date": room}
 
 @router.delete("/{hotel_id}/rooms/{room_id}", summary='Удалить комнату')
-async def delete_room(hotel_id: int, room_id : int, db : DBDep):
+async def delete_room(hotel_id: int, room_id : int, db : DBDep,admin_id: AdminDep):
     result = await db.rooms.delete(id=room_id,hotel_id=hotel_id)
     await db.commit()
     return result
 
 @router.patch('/{hotel_id}/rooms/{room_id}', summary='Изменить часть информации об комнате')
-async def patch_room(hotel_id:int,room_id:int, room_data: PatchRoomRequest, db : DBDep):
+async def patch_room(hotel_id:int,room_id:int, room_data: PatchRoomRequest, db : DBDep,admin_id: AdminDep):
     _room_data = PatchRoom(hotel_id=hotel_id,**room_data.model_dump(exclude_unset=True))
     res = await db.rooms.edit(_room_data, exclude_unset=True, id = room_id, hotel_id=hotel_id)
     if res["status"] == 'success':
@@ -43,7 +43,7 @@ async def patch_room(hotel_id:int,room_id:int, room_data: PatchRoomRequest, db :
         raise HTTPException(status_code=404, detail="Room not found")
 
 @router.put("/{hotel_id}/rooms/{room_id}",summary='Изменение информации об комнате')
-async def edit_room(hotel_id:int, room_id:int, room_data: RoomAddRequest, db : DBDep):
+async def edit_room(hotel_id:int, room_id:int, room_data: RoomAddRequest, db : DBDep,admin_id: AdminDep):
     _room_data = RoomAdd(hotel_id=hotel_id, **room_data.model_dupm())
     res = await db.rooms.edit(_room_data,id = room_id)
     if res["status"] == 'success':

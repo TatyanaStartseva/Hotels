@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Response, Request
 
 from src.api.dependencies import UserIdDep, DBDep
-from src.schemas.users import UserRequestAdd, UserAdd
+from src.schemas.users import UserRequestAdd, UserAdd, User
 from src.services.auth import AuthService
 from sqlalchemy.exc import IntegrityError
 router = APIRouter(prefix='/auth',tags=['Авторизация и аутенфикация'] )
@@ -42,7 +42,10 @@ async def logout(response: Response):
     return {"status": 200}
 
 
-@router.get("/me")
-async def get_me(user_id: UserIdDep,db: DBDep):
+@router.get("/me", response_model=User)
+async def get_me(user_id: UserIdDep, db: DBDep):
     user = await db.users.get_one_or_none(id=user_id)
+    print(user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return user

@@ -1,7 +1,8 @@
-// hotels-frontend/src/pages/LoginPage.tsx
-import { FormEvent, useState } from "react";
-import { login, register } from "../api/auth";
+// src/pages/LoginPage.tsx
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { login, register } from "../api/auth";
+import { AuthContext } from "../contexts/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -9,19 +10,26 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const { refreshAuth } = useContext(AuthContext);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       if (mode === "login") {
         await login({ email, password });
       } else {
         await register({ email, password });
-        await login({ email, password });
       }
-      // 👉 после успешного логина идём на главную, а не сразу в брони
+
+      // обновляем контекст, чтобы isAdmin / isLogged стали актуальными
+      await refreshAuth();
+
+      // и только потом переходим на главную
       navigate("/");
-    } catch {
+    } catch (e: any) {
       alert("Ошибка авторизации");
+      console.error(e);
     }
   };
 
@@ -30,36 +38,38 @@ export default function LoginPage() {
       <h1>{mode === "login" ? "Вход" : "Регистрация"}</h1>
 
       <form onSubmit={handleSubmit}>
-        <div>
+        <div style={{ marginBottom: 10 }}>
           <input
+            placeholder="Email"
             type="email"
-            placeholder="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
+            style={{ width: "100%" }}
           />
         </div>
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginBottom: 10 }}>
           <input
+            placeholder="Пароль"
             type="password"
-            placeholder="пароль"
             value={password}
             onChange={e => setPassword(e.target.value)}
+            style={{ width: "100%" }}
           />
         </div>
-        <button type="submit" style={{ marginTop: 10 }}>
+
+        <button type="submit" style={{ marginRight: 10 }}>
           {mode === "login" ? "Войти" : "Зарегистрироваться"}
         </button>
-      </form>
 
-      <button
-        style={{ marginTop: 10 }}
-        type="button"
-        onClick={() =>
-          setMode(mode === "login" ? "register" : "login")
-        }
-      >
-        {mode === "login" ? "Перейти к регистрации" : "Перейти к входу"}
-      </button>
+        <button
+          type="button"
+          onClick={() =>
+            setMode(prev => (prev === "login" ? "register" : "login"))
+          }
+        >
+          {mode === "login" ? "Перейти к регистрации" : "Перейти ко входу"}
+        </button>
+      </form>
     </div>
   );
 }

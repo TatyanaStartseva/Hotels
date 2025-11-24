@@ -43,3 +43,11 @@ async def get_db():
 
 UserIdDep = Annotated[int, Depends(get_current_user_id)]
 DBDep = Annotated[DBManager, Depends(get_db)]
+
+async def admin_required(user_id: UserIdDep, db: DBDep) -> int:
+    user = await db.users.get_one_or_none(id=user_id)
+    if not user or not getattr(user, "is_admin", False):
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+    return user.id
+
+AdminDep = Annotated[int, Depends(admin_required)]

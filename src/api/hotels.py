@@ -5,7 +5,7 @@ from fastapi import HTTPException
 
 from fastapi import APIRouter , Query,Body
 
-from src.api.dependencies import PaginationDep
+from src.api.dependencies import PaginationDep, AdminDep
 from src.schemas.hotels import Hotel, HotelPatch, HotelAdd
 from src.clients.amadeus import AmadeusClient
 from src.services.search_both import search_hotels_read_through_both
@@ -52,7 +52,7 @@ async def get_hotels(
 
 
 @router.delete("/{hotel_id}",summary='Удаление отеля из базы данных')
-async def delete_hotel(hotel_id:int,db : DBDep ):
+async def delete_hotel(hotel_id:int,admin_id: AdminDep,db : DBDep ):
     result = await db.hotels.delete(id=hotel_id)
     await db.commit()
     return result
@@ -61,6 +61,7 @@ async def delete_hotel(hotel_id:int,db : DBDep ):
 @router.post("", summary='Добавление нового отеля')
 async def post_hotels(
     db: DBDep,
+    admin_id: AdminDep,
     hotel_data: HotelAdd = Body(
         openapi_examples={
             "1": {
@@ -97,7 +98,7 @@ async def post_hotels(
 
 @router.patch("/{id}", summary="Частичное обновление данных об отеле",
      description="<h1>Тут мы частично обновляем данные об отеле</h1>")
-async def patch_hotels(id:int, hotel_data:HotelPatch,db : DBDep):
+async def patch_hotels(id:int, hotel_data:HotelPatch,db : DBDep,admin_id: AdminDep):
     hotel = await db.hotels.edit(hotel_data, exclude_unset=True, id = id)
     if hotel["status"] == 'success':
         await db.commit()
@@ -107,7 +108,7 @@ async def patch_hotels(id:int, hotel_data:HotelPatch,db : DBDep):
 
 
 @router.put("/{id}",summary='Обновление данных об отеле')
-async def patch_hotels(id: int,hotel_data:HotelAdd,db : DBDep):
+async def patch_hotels(id: int,hotel_data:HotelAdd,db : DBDep,admin_id: AdminDep):
     hotel = await db.hotels.edit(hotel_data,id= id)
     if hotel["status"] =='success':
         await db.commit()

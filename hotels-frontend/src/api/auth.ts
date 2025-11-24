@@ -6,6 +6,11 @@ export interface AuthPayload {
   password: string;
 }
 
+export interface Me {
+  id: number;
+  email: string;
+  is_admin: boolean;   // 👈 добавили
+}
 // сохраняем токен и навешиваем его на все запросы axios
 function saveToken(token: string) {
   api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
