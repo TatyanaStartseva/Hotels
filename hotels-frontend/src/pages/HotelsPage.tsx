@@ -1,25 +1,73 @@
 import { useEffect, useState } from "react";
-import { getHotels } from "../api/hotels";      // <- только функция
-import type { Hotel } from "../api/hotels";     // <- а это ТИП
+import { getHotels } from "../api/hotels";
+import type { Hotel } from "../api/hotels";
 import { Link, useNavigate } from "react-router-dom";
-
 
 export default function HotelsPage() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [search, setSearch] = useState("");
+  const [city, setCity] = useState("");   // для поиска по городу
+  const [title, setTitle] = useState(""); // для поиска по названию
+  const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    load();
+    loadAll();
   }, []);
 
-  const load = async () => {
-    const text = search.trim() || undefined;
-    const data = await getHotels({
-      title: text,     // поиск по названию
-      location: text,  // И ПО ГОРОДУ ТОЖЕ
-    });
-    setHotels(data);
+  // загрузить все отели без фильтра
+  const loadAll = async () => {
+    setMessage(null);
+    try {
+      const data = await getHotels();
+      setHotels(data);
+      if (data.length === 0) {
+        setMessage("Отели не найдены. Добавьте их через /docs → POST /hotels.");
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage("Ошибка при загрузке отелей.");
+    }
+  };
+
+  // поиск по ГОРОДУ
+  const searchByCity = async () => {
+    setMessage(null);
+    const text = city.trim();
+    if (!text) {
+      await loadAll();
+      return;
+    }
+    try {
+      // сюда передаем город как есть (Moscow, Париж, MOW и т.п.)
+      const data = await getHotels({ location: text });
+      setHotels(data);
+      if (data.length === 0) {
+        setMessage("Отели в этом городе не найдены.");
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage("Ошибка при поиске по городу.");
+    }
+  };
+
+  // поиск по НАЗВАНИЮ отеля
+  const searchByTitle = async () => {
+    setMessage(null);
+    const text = title.trim();
+    if (!text) {
+      await loadAll();
+      return;
+    }
+    try {
+      const data = await getHotels({ title: text });
+      setHotels(data);
+      if (data.length === 0) {
+        setMessage("Отели с таким названием не найдены.");
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage("Ошибка при поиске по названию.");
+    }
   };
 
   return (
@@ -39,24 +87,43 @@ export default function HotelsPage() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 20 }}>
+      {/* Поиск по городу */}
+      <div style={{ marginBottom: 10 }}>
         <input
-          placeholder="Поиск по названию или городу"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
+          placeholder="Город (Moscow, Paris или код MOW)"
+          value={city}
+          onChange={e => setCity(e.target.value)}
+          style={{ marginRight: 8 }}
         />
-        <button onClick={load}>Найти</button>
+        <button onClick={searchByCity}>Найти по городу</button>
       </div>
 
-      <ul>
-        {hotels.map(h => (
-          <li key={h.id} style={{ marginBottom: 10 }}>
-            <Link to={`/hotels/${h.id}`}>
-              {h.title} – {h.location}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* Поиск по названию */}
+      <div style={{ marginBottom: 20 }}>
+        <input
+          placeholder="Название отеля (полностью или часть)"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          style={{ marginRight: 8 }}
+        />
+        <button onClick={searchByTitle}>Найти по названию</button>
+      </div>
+
+      {message && (
+        <p style={{ color: "gray", marginBottom: 10 }}>{message}</p>
+      )}
+
+      {hotels.length > 0 && (
+        <ul>
+          {hotels.map(h => (
+            <li key={h.id} style={{ marginBottom: 10 }}>
+              <Link to={`/hotels/${h.id}`}>
+                {h.title} – {h.location}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -16,22 +16,39 @@ from src.api.dependencies import DBDep
 from src.services.search_hotels import search_hotels_catalog_read_through
 
 
-@router.get('',summary='Получение информации об отелях')
+@router.get('', summary='Получение информации об отелях')
 async def get_hotels(
-        pagination: PaginationDep,
-        db : DBDep,
-        id: int | None = Query(None, description="id"),
-        title: str | None = Query(None, description="Название отеля"),
-        location: str |None = Query(None, description="Адрес"),
+    pagination: PaginationDep,
+    db: DBDep,
+    id: int | None = Query(None, description="id"),
+    title: str | None = Query(None, description="Название отеля"),
+    location: str | None = Query(None, description="Адрес / город"),
 ):
     per_page = pagination.per_page or 5
+
+    # 🔵 Нормализуем location: Moscow -> MOW, Sochi -> AER и т.п.
+    if location:
+        city_raw = location.strip()
+        if len(city_raw) == 3 and city_raw.isalpha():
+            # уже IATA-код
+            city_code = city_raw.upper()
+        else:
+            am = AmadeusClient()
+            city_code = await am.resolve_city_code(city_raw)
+            if not city_code:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Не удалось определить IATA-код для '{city_raw}'",
+                )
+        location = city_code
+
     return await db.hotels.get_all(
-            id =id,
-            location=location,
-            title=title,
-            limit = per_page,
-            offset = per_page * (pagination.page - 1)
-        )
+        id=id,
+        location=location,
+        title=title,
+        limit=per_page,
+        offset=per_page * (pagination.page - 1),
+    )
 
 
 @router.delete("/{hotel_id}",summary='Удаление отеля из базы данных')
@@ -133,7 +150,7 @@ async def ingest_from_amadeus(
 @router.get("/actions/search", summary="Поиск отелей + пополнение каталога (Amadeus/Xotelo/both)")
 async def search_hotels_both(
     db: DBDep,
-    city: str = Query(..., description="Город: Moscow/Москва/или IATA (MOW)"),
+    city: str = Query(..., description="Город: Moscow или IATA (MOW)"),
     check_in: str = Query(..., description="YYYY-MM-DD"),
     check_out: str = Query(..., description="YYYY-MM-DD"),
     adults: int = Query(1, ge=1, le=9),

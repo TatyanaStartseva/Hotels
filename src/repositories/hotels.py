@@ -10,26 +10,38 @@ from src.schemas.hotels import Hotel
 class HotelsRepository(BaseRepository):
     model = HotelsOrm
     schema = Hotel
-    async def get_all(self,id,location,title,limit,offset):
-            query = select(self.model)
-            if id:
-                query = query.filter_by(id=id)
-            if title:
-                query = query.filter_by(title=title)
-            if location:
-                query = query.filter(self.model.location.ilike(f"%{location}%")) # ilike чтобы при вводе данных они были регистро независимые
-            query = (
-                query
-                .limit(limit)
-                .offset(offset)
-            )
+    async def get_all(
+        self,
+        id: int | None = None,
+        location: str | None = None,
+        title: str | None = None,
+        limit: int = 10,
+        offset: int = 0,
+    ):
+        query = select(self.model)
 
-            result = await self.session.execute(query)
-            return [self.schema.model_validate(hotel, from_attributes=True) for hotel in result.scalars().all()]
+        if id is not None:
+            query = query.where(self.model.id == id)
 
+        if title:
+            like_expr = f"%{title}%"
+            query = query.where(self.model.title.ilike(like_expr))
 
-    async def get_hotel(self,id:int):
-        query = select(self.model).filter_by(id=id)
+        if location:
+            like_expr = f"%{location}%"
+            query = query.where(self.model.location.ilike(like_expr))
+
+        query = query.limit(limit).offset(offset)
+
+        result = await self.session.execute(query)
+        hotels = result.scalars().all()
+        return [
+            self.schema.model_validate(hotel, from_attributes=True)
+            for hotel in hotels
+        ]
+
+    async def get_hotel(self, id: int):
+        query = select(self.model).where(self.model.id == id)
         result = await self.session.execute(query)
         return result.scalar_one()
 
