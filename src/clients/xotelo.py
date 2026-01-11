@@ -8,7 +8,6 @@ from src.config import settings
 log = logging.getLogger(__name__)
 
 class XoteloClient:
-    # Базовый RapidAPI-хост для Xotelo
     BASE = "https://xotelo-hotel-prices.p.rapidapi.com"
 
     def __init__(self, api_key: Optional[str] = None, host: Optional[str] = None, proxy_url: Optional[str] = None):

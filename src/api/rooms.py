@@ -5,12 +5,23 @@ from fastapi import APIRouter, Query, Body, HTTPException
 from src.api.dependencies import DBDep, AdminDep
 from src.schemas.rooms import RoomAdd, PatchRoom, RoomAddRequest, PatchRoomRequest
 from src.models.rooms import RoomsOrm
-
+from datetime import date
 router = APIRouter(prefix="/rooms", tags=['Комнаты'])
 
 
-@router.get('/{hotel_id}/rooms', summary='Получение информации об комнатах')
-async def get_rooms(hotel_id:int, db : DBDep):
+@router.get("/{hotel_id}/rooms")
+async def get_rooms(
+    hotel_id: int,
+    db: DBDep,
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+):
+    if date_from and date_to:
+        return await db.rooms.get_with_availability(
+            hotel_id=hotel_id,
+            date_from=date_from,
+            date_to=date_to,
+        )
     return await db.rooms.get_filtered(hotel_id=hotel_id)
 
 @router.get("/{hotel_id}/rooms/{room_id}", summary='Получение информации об комнате')

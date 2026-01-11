@@ -1,5 +1,11 @@
+// src/pages/HotelsPage.tsx
 import { useEffect, useState } from "react";
-import { getHotels, createHotel, deleteHotel } from "../api/hotels";
+import {
+  getHotels,
+  createHotel,
+  deleteHotel,
+  updateHotel,
+} from "../api/hotels";
 import type { Hotel } from "../api/hotels";
 import { Link, useNavigate } from "react-router-dom";
 import { getMe } from "../api/auth";
@@ -16,6 +22,11 @@ export default function HotelsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
 
+  // состояние для редактирования
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,26 +35,18 @@ export default function HotelsPage() {
   }, []);
 
   const checkMe = async () => {
-  try {
-    const me = await getMe();
-    setIsLogged(true);
-
-    // БЫСТРЫЙ ВАРИАНТ: считаем админом по email
-
-    // если бек когда-нибудь начнёт отдавать is_admin — тоже учтём
-    const isAdminFlag = me.is_admin === true;
-
-    setIsAdmin(isAdminFlag);
-
-    console.log("ME:", me);
-    console.log("computed isAdmin:", isAdminByEmail || isAdminFlag);
-  } catch (e) {
-    console.log("Не залогинен или ошибка /auth/me", e);
-    setIsLogged(false);
-    setIsAdmin(false);
-  }
-};
-
+    try {
+      const me = await getMe();
+      setIsLogged(true);
+      // теперь is_admin приходит с бэка
+      setIsAdmin(me.is_admin === true);
+      console.log("ME:", me);
+    } catch (e) {
+      console.log("Не залогинен или ошибка /auth/me", e);
+      setIsLogged(false);
+      setIsAdmin(false);
+    }
+  };
 
   const loadAll = async () => {
     setMessage(null);
@@ -132,6 +135,37 @@ export default function HotelsPage() {
     }
   };
 
+  const startEdit = (hotel: Hotel) => {
+    setEditingId(hotel.id);
+    setEditTitle(hotel.title);
+    setEditLocation(hotel.location);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditLocation("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    try {
+      await updateHotel(editingId, {
+        title: editTitle,
+        location: editLocation,
+      });
+      await loadAll();
+      cancelEdit();
+    } catch (e: any) {
+      console.error(e);
+      if (e?.response?.status === 403) {
+        alert("Нет прав: только администратор может изменять отели");
+      } else {
+        alert("Ошибка при изменении отеля");
+      }
+    }
+  };
+
   return (
     <div style={{ maxWidth: 800, margin: "40px auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -149,7 +183,6 @@ export default function HotelsPage() {
         </div>
       </div>
 
-      {/* DEBUG, чтобы ты видела состояние */}
       <div style={{ marginBottom: 10, fontSize: 12, color: "gray" }}>
         DEBUG: isLogged={String(isLogged)}; isAdmin={String(isAdmin)}
       </div>
@@ -159,7 +192,7 @@ export default function HotelsPage() {
         <input
           placeholder="Город (Moscow, MOW...)"
           value={city}
-          onChange={e => setCity(e.target.value)}
+          onChange={(e) => setCity(e.target.value)}
           style={{ marginRight: 8 }}
         />
         <button onClick={searchByCity}>Найти по городу</button>
@@ -170,7 +203,7 @@ export default function HotelsPage() {
         <input
           placeholder="Название отеля"
           value={title}
-          onChange={e => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
           style={{ marginRight: 8 }}
         />
         <button onClick={searchByTitle}>Найти по названию</button>
@@ -178,7 +211,7 @@ export default function HotelsPage() {
 
       {message && <p style={{ color: "gray" }}>{message}</p>}
 
-      {/* Добавление отеля — только для админа */}
+      {/* Добавление отеля — только админ */}
       {isAdmin && (
         <div
           style={{ border: "1px solid #ccc", padding: 12, marginBottom: 20 }}
@@ -188,13 +221,13 @@ export default function HotelsPage() {
             <input
               placeholder="Название"
               value={newTitle}
-              onChange={e => setNewTitle(e.target.value)}
+              onChange={(e) => setNewTitle(e.target.value)}
               style={{ marginRight: 8 }}
             />
             <input
               placeholder="Город"
               value={newLocation}
-              onChange={e => setNewLocation(e.target.value)}
+              onChange={(e) => setNewLocation(e.target.value)}
               style={{ marginRight: 8 }}
             />
             <button onClick={handleCreateHotel}>Добавить</button>
@@ -204,18 +237,49 @@ export default function HotelsPage() {
 
       {hotels.length > 0 && (
         <ul>
-          {hotels.map(h => (
+          {hotels.map((h) => (
             <li key={h.id} style={{ marginBottom: 10 }}>
-              <Link to={`/hotels/${h.id}`}>
-                {h.title} – {h.location}
-              </Link>
-              {isAdmin && (
-                <button
-                  style={{ marginLeft: 10 }}
-                  onClick={() => handleDeleteHotel(h.id)}
-                >
-                  Удалить
-                </button>
+              {editingId === h.id ? (
+                // Режим редактирования
+                <div>
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    style={{ marginRight: 8 }}
+                  />
+                  <input
+                    value={editLocation}
+                    onChange={(e) => setEditLocation(e.target.value)}
+                    style={{ marginRight: 8 }}
+                  />
+                  <button onClick={saveEdit} style={{ marginRight: 4 }}>
+                    Сохранить
+                  </button>
+                  <button onClick={cancelEdit}>Отмена</button>
+                </div>
+              ) : (
+                // Обычный режим
+                <div>
+                  <Link to={`/hotels/${h.id}`}>
+                    {h.title} – {h.location}
+                  </Link>
+                  {isAdmin && (
+                    <>
+                      <button
+                        style={{ marginLeft: 10 }}
+                        onClick={() => startEdit(h)}
+                      >
+                        Изменить
+                      </button>
+                      <button
+                        style={{ marginLeft: 10 }}
+                        onClick={() => handleDeleteHotel(h.id)}
+                      >
+                        Удалить
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
             </li>
           ))}
