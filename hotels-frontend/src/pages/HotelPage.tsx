@@ -14,7 +14,7 @@ export default function HotelPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-
+  const today = new Date().toISOString().slice(0, 10);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // состояние для добавления комнаты
@@ -72,6 +72,15 @@ const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
     alert("Выбери даты");
     return;
   }
+  if (dateFrom >= dateTo) {
+    alert("Дата заезда должна быть раньше даты выезда");
+    return;
+  }
+
+  if (dateFrom < today) {
+      alert("Нельзя бронировать даты в прошлом");
+      return;
+    }
   if (bookingRoomId !== null) return;
 
   try {
@@ -83,13 +92,11 @@ const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
       date_to: dateTo,
     });
 
-    // после успешного бронирования просто перезагружаем комнаты
     await loadRooms();
-
     alert("Бронь создана");
-  } catch (e) {
+  } catch (e: any) {
     console.error("createBooking failed:", e);
-    alert("Ошибка при бронировании");
+    alert(e?.message ?? "Ошибка при бронировании");
   } finally {
     setBookingRoomId(null);
   }
@@ -174,23 +181,26 @@ const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
       <h1>Отель #{hotelId}</h1>
 
       <div style={{ marginBottom: 20 }}>
-        <label>
-          Дата заезда:
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-        </label>
-        <label style={{ marginLeft: 10 }}>
-          Дата выезда:
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-        </label>
-      </div>
+          <label>
+            Дата заезда:
+            <input
+              type="date"
+              value={dateFrom}
+              min={today}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </label>
+
+          <label style={{ marginLeft: 10 }}>
+            Дата выезда:
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || today}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </label>
+        </div>
 
       <h2>Комнаты</h2>
 
