@@ -5,7 +5,7 @@ from typing import List
 class HotelAdd(BaseModel):
     title: str
     location: str
-    images: list[str] = []
+    images: list[str] = Field(default_factory=list)
 
 class Hotel(HotelAdd):
     id : int

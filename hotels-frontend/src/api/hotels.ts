@@ -11,6 +11,7 @@ export async function getHotels(params?: {
   per_page?: number;
   title?: string;
   location?: string;
+  images?: string[];
 }) {
   const res = await api.get<Hotel[]>("/hotels", { params });
   return res.data;

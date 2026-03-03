@@ -428,10 +428,6 @@ export default function HotelsPage() {
         </div>
       </div>
 
-      <div style={{ marginBottom: 10, fontSize: 12, color: "gray" }}>
-        DEBUG: isLogged={String(isLogged)}; isAdmin={String(isAdmin)}
-      </div>
-
       {/* Поиск по городу */}
       <div style={{ marginBottom: 10 }}>
         <input
@@ -657,9 +653,25 @@ export default function HotelsPage() {
                 </div>
               ) : (
                 <div>
-                  <Link to={`/hotels/${h.id}`}>
-                    {h.title} – {h.location}
-                  </Link>
+                  <Link
+  to={`/hotels/${h.id}`}
+  style={{ display: "flex", gap: 12, alignItems: "center", textDecoration: "none" }}
+>
+  {h.images?.[0] ? (
+    <img
+      src={h.images[0]}
+      alt={h.title}
+      style={{ width: 90, height: 65, objectFit: "cover", borderRadius: 10 }}
+    />
+  ) : (
+    <div style={{ width: 90, height: 65, borderRadius: 10, background: "#eee" }} />
+  )}
+
+  <div>
+    <div style={{ fontWeight: 600, color: "#111" }}>{h.title}</div>
+    <div style={{ color: "gray" }}>{h.location}</div>
+  </div>
+</Link>
                   {isAdmin && (
                     <>
                       <button
