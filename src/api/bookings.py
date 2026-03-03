@@ -8,6 +8,7 @@ from src.models.rooms import RoomsOrm
 from src.models.bookings import BookingsOrm
 from datetime import date
 router = APIRouter(prefix="/bookings", tags=["Бронирования"])
+from src.models.pets import PetsOrm
 
 #возвращает все бронирования, которые есть
 @router.get("")
@@ -60,6 +61,10 @@ async def add_booking(user_id: UserIdDep, db: DBDep, booking_data: BookingAddReq
         raise HTTPException(status_code=409, detail="Нет свободных номеров на эти даты")
 
     room_price: int = room.price
+    # pet = await db.pets.get_one_or_none(id=booking_data.pet_id)
+    # if not pet or pet.user_id != user_id:
+    #     raise HTTPException(404, "Pet not found")
+
     _booking_data = BookingAdd(
         user_id=user_id,
         price=room_price,

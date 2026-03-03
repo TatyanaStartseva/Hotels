@@ -26,7 +26,7 @@ async def get_hotels(
 ):
     per_page = pagination.per_page or 5
 
-    # 🔵 Нормализуем location: Moscow -> MOW, Sochi -> AER и т.п.
+    # Нормализуем location: Moscow -> MOW, Sochi -> AER и т.п.
     if location:
         city_raw = location.strip()
         if len(city_raw) == 3 and city_raw.isalpha():

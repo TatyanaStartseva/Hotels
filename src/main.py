@@ -7,12 +7,15 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.config import settings
+from src.api.pets import router as router_pets
 from src.api.hotels import router as router_hotels
 from src.api.auth import router as router_auth
 from src.api.rooms import router as router_rooms
 from src.api.bookings import router as router_bookings
 from src.database import *
 from fastapi.middleware.cors import CORSMiddleware
+from src.api.rooms_search import router as router_rooms_search
+from src.api.rooms_search import router as rooms_search_router
 
 app = FastAPI(docs_url=None)
 
@@ -24,11 +27,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+app.include_router(rooms_search_router)
+app.include_router(router_rooms_search)
 app.include_router(router_auth)
 app.include_router(router_hotels)
 app.include_router(router_rooms)
 app.include_router(router_bookings)
+app.include_router(router_pets)
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():

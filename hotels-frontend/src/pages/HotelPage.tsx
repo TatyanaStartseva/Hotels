@@ -239,31 +239,66 @@ const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
             ) : (
               // обычный режим
               <div>
-                {r.title} – {r.price}₽ – осталось {r.available ?? r.quantity}
-                <button
-                  onClick={() => handleBook(r.id)}
-                  disabled={bookingRoomId === r.id}
-                  style={{ marginLeft: 10 }}
-                >
-                  {bookingRoomId === r.id ? "Бронирую..." : "Забронировать"}
-                </button>
-                {isAdmin && (
-                  <>
-                    <button
-                      style={{ marginLeft: 10 }}
-                      onClick={() => startEditRoom(r)}
-                    >
-                      Изменить
-                    </button>
-                    <button
-                      style={{ marginLeft: 10 }}
-                      onClick={() => handleDeleteRoom(r.id)}
-                    >
-                      Удалить
-                    </button>
-                  </>
-                )}
-              </div>
+  <div>
+    <b>{r.title}</b> – {r.price}₽ – осталось {r.available ?? r.quantity}
+    <button
+      onClick={() => handleBook(r.id)}
+      disabled={bookingRoomId === r.id}
+      style={{ marginLeft: 10 }}
+    >
+      {bookingRoomId === r.id ? "Бронирую..." : "Забронировать"}
+    </button>
+
+    {isAdmin && (
+      <>
+        <button style={{ marginLeft: 10 }} onClick={() => startEditRoom(r)}>
+          Изменить
+        </button>
+        <button style={{ marginLeft: 10 }} onClick={() => handleDeleteRoom(r.id)}>
+          Удалить
+        </button>
+      </>
+    )}
+  </div>
+
+  {/* ✅ подробности номера */}
+  <div style={{ marginTop: 6, paddingLeft: 10, color: "#444" }}>
+    {r.description && (
+      <div>
+        <span style={{ color: "gray" }}>Описание:</span> {r.description}
+      </div>
+    )}
+
+    {r.room_conditions && (
+      <div>
+        <span style={{ color: "gray" }}>Условия:</span> {r.room_conditions}
+      </div>
+    )}
+
+    {Array.isArray(r.allowed_species) && r.allowed_species.length > 0 && (
+      <div>
+        <span style={{ color: "gray" }}>Животные:</span>{" "}
+        {r.allowed_species.join(", ")}
+      </div>
+    )}
+
+    {(r.temp_min != null || r.temp_max != null) && (
+      <div>
+        <span style={{ color: "gray" }}>Температура:</span>{" "}
+        {r.temp_min != null ? `от ${r.temp_min}` : "—"}{" "}
+        {r.temp_max != null ? `до ${r.temp_max}` : "—"} °C
+      </div>
+    )}
+
+    {(r.humidity_min != null || r.humidity_max != null) && (
+      <div>
+        <span style={{ color: "gray" }}>Влажность:</span>{" "}
+        {r.humidity_min != null ? `от ${r.humidity_min}` : "—"}{" "}
+        {r.humidity_max != null ? `до ${r.humidity_max}` : "—"} %
+      </div>
+    )}
+  </div>
+</div>
             )}
           </li>
         ))}

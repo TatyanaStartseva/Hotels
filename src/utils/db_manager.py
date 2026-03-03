@@ -6,6 +6,8 @@ from src.repositories.hotels import HotelsRepository
 from src.repositories.rooms import RoomsRepositories
 from src.repositories.users import UsersRepository
 from src.repositories.bookings import BookingsRepository
+from src.repositories.pets import PetsRepository  # ✅ добавь
+
 
 class DBManager:
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
@@ -16,6 +18,7 @@ class DBManager:
         self.rooms: Optional[RoomsRepositories] = None
         self.users: Optional[UsersRepository] = None
         self.bookings: Optional[BookingsRepository] = None
+        self.pets: Optional[PetsRepository] = None
 
     async def __aenter__(self):
         # создаём новую асинхронную сессию
@@ -25,6 +28,7 @@ class DBManager:
         self.rooms = RoomsRepositories(self.session)
         self.users = UsersRepository(self.session)
         self.bookings = BookingsRepository(self.session)
+        self.pets = PetsRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, tb):

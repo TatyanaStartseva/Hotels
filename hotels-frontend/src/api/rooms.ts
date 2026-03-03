@@ -7,6 +7,14 @@ export interface Room {
   price: number;
   quantity: number;
   available?: number;
+
+  description?: string | null;
+  allowed_species?: string[] | null;
+  temp_min?: number | null;
+  temp_max?: number | null;
+  humidity_min?: number | null;
+  humidity_max?: number | null;
+  room_conditions?: string | null;
 }
 
 export async function getRooms(

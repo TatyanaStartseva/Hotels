@@ -5,6 +5,7 @@ import { api } from "./client";
 export interface BookingPayload {
   room_id: number;
   date_from: string; // "2025-01-01"
+  pet_id: number;
   date_to: string;
 }
 
@@ -12,6 +13,7 @@ export async function createBooking(payload: {
   room_id: number;
   date_from: string;
   date_to: string;
+  pet_id: number;
 }) {
   try {
     const res = await api.post("/bookings", payload);
