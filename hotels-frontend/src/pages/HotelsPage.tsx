@@ -68,6 +68,7 @@ export default function HotelsPage() {
 
   const [newTitle, setNewTitle] = useState("");
   const [newLocation, setNewLocation] = useState("");
+  const [newImageUrl, setNewImageUrl] = useState("");
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
@@ -76,8 +77,9 @@ export default function HotelsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLocation, setEditLocation] = useState("");
+  const [editImageUrl, setEditImageUrl] = useState("");
 
-  // ✅ питомцы и требования
+  //  питомцы и требования
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<number | "">("");
 
@@ -330,24 +332,32 @@ export default function HotelsPage() {
   };
 
   const handleCreateHotel = async () => {
-    if (!newTitle || !newLocation) {
-      alert("Заполните название и город");
-      return;
+  if (!newTitle || !newLocation) {
+    alert("Заполните название и город");
+    return;
+  }
+  try {
+    const url = newImageUrl.trim();
+
+    await createHotel({
+      title: newTitle,
+      location: newLocation,
+      images: url ? [url] : [],
+    });
+
+    setNewTitle("");
+    setNewLocation("");
+    setNewImageUrl("");
+    await loadAll();
+  } catch (e: any) {
+    console.error(e);
+    if (e?.response?.status === 403) {
+      alert("Нет прав: только администратор может добавлять отели");
+    } else {
+      alert("Ошибка при создании отеля");
     }
-    try {
-      await createHotel({ title: newTitle, location: newLocation });
-      setNewTitle("");
-      setNewLocation("");
-      await loadAll();
-    } catch (e: any) {
-      console.error(e);
-      if (e?.response?.status === 403) {
-        alert("Нет прав: только администратор может добавлять отели");
-      } else {
-        alert("Ошибка при создании отеля");
-      }
-    }
-  };
+  }
+};
 
   const handleDeleteHotel = async (id: number) => {
     if (!confirm("Удалить отель?")) return;
@@ -365,24 +375,31 @@ export default function HotelsPage() {
   };
 
   const startEdit = (hotel: Hotel) => {
-    setEditingId(hotel.id);
-    setEditTitle(hotel.title);
-    setEditLocation(hotel.location);
-  };
+  setEditingId(hotel.id);
+  setEditTitle(hotel.title);
+  setEditLocation(hotel.location);
+
+  const firstImg =
+    (hotel as any).images && (hotel as any).images.length ? (hotel as any).images[0] : "";
+  setEditImageUrl(firstImg);
+};
 
   const cancelEdit = () => {
-    setEditingId(null);
-    setEditTitle("");
-    setEditLocation("");
-  };
-
+  setEditingId(null);
+  setEditTitle("");
+  setEditLocation("");
+  setEditImageUrl("");
+};
   const saveEdit = async () => {
     if (!editingId) return;
     try {
-      await updateHotel(editingId, {
-        title: editTitle,
-        location: editLocation,
-      });
+      const url = editImageUrl.trim();
+
+await updateHotel(editingId, {
+  title: editTitle,
+  location: editLocation,
+  images: url ? [url] : [],
+});
       await loadAll();
       cancelEdit();
     } catch (e: any) {
@@ -614,18 +631,27 @@ export default function HotelsPage() {
           <h3>Добавить отель (только администратор)</h3>
           <div>
             <input
-              placeholder="Название"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              style={{ marginRight: 8 }}
-            />
-            <input
-              placeholder="Город"
-              value={newLocation}
-              onChange={(e) => setNewLocation(e.target.value)}
-              style={{ marginRight: 8 }}
-            />
-            <button onClick={handleCreateHotel}>Добавить</button>
+  placeholder="Название"
+  value={newTitle}
+  onChange={(e) => setNewTitle(e.target.value)}
+  style={{ marginRight: 8 }}
+/>
+
+<input
+  placeholder="Город"
+  value={newLocation}
+  onChange={(e) => setNewLocation(e.target.value)}
+  style={{ marginRight: 8 }}
+/>
+
+<input
+  placeholder="Ссылка на картинку (URL)"
+  value={newImageUrl}
+  onChange={(e) => setNewImageUrl(e.target.value)}
+  style={{ marginRight: 8, width: 260 }}
+/>
+
+<button onClick={handleCreateHotel}>Добавить</button>
           </div>
         </div>
       )}
@@ -637,19 +663,28 @@ export default function HotelsPage() {
               {editingId === h.id ? (
                 <div>
                   <input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    style={{ marginRight: 8 }}
-                  />
-                  <input
-                    value={editLocation}
-                    onChange={(e) => setEditLocation(e.target.value)}
-                    style={{ marginRight: 8 }}
-                  />
-                  <button onClick={saveEdit} style={{ marginRight: 4 }}>
-                    Сохранить
-                  </button>
-                  <button onClick={cancelEdit}>Отмена</button>
+  value={editTitle}
+  onChange={(e) => setEditTitle(e.target.value)}
+  style={{ marginRight: 8 }}
+/>
+
+<input
+  value={editLocation}
+  onChange={(e) => setEditLocation(e.target.value)}
+  style={{ marginRight: 8 }}
+/>
+
+<input
+  placeholder="Ссылка на картинку (URL)"
+  value={editImageUrl}
+  onChange={(e) => setEditImageUrl(e.target.value)}
+  style={{ marginRight: 8, width: 260 }}
+/>
+
+<button onClick={saveEdit} style={{ marginRight: 4 }}>
+  Сохранить
+</button>
+<button onClick={cancelEdit}>Отмена</button>
                 </div>
               ) : (
                 <div>

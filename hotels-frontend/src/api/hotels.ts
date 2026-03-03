@@ -17,7 +17,7 @@ export async function getHotels(params?: {
   return res.data;
 }
 
-export async function createHotel(payload: { title: string; location: string }) {
+export async function createHotel(payload: { title: string; location: string; images?: string[];}) {
   const res = await api.post("/hotels", payload);
   return res.data;
 }
@@ -28,7 +28,7 @@ export async function deleteHotel(id: number) {
 }
 export async function updateHotel(
   id: number,
-  payload: { title?: string; location?: string }
+  payload: { title?: string; location?: string ; images?: string[];}
 ) {
   const res = await api.patch(`/hotels/${id}`, payload);
   return res.data;

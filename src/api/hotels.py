@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from fastapi import APIRouter , Query,Body
 
 from src.api.dependencies import PaginationDep, AdminDep
+from src.models.hotels import HotelsOrm
 from src.schemas.hotels import Hotel, HotelPatch, HotelAdd
 from src.clients.amadeus import AmadeusClient
 from src.services.search_both import search_hotels_read_through_both
@@ -14,7 +15,7 @@ router = APIRouter(prefix="/hotels",tags=['Отели'])
 from datetime import date
 from src.api.dependencies import DBDep
 from src.services.search_hotels import search_hotels_catalog_read_through
-
+from src.utils.city_normalize import normalize_city_input
 
 @router.get('', summary='Получение информации об отелях')
 async def get_hotels(
@@ -26,21 +27,23 @@ async def get_hotels(
 ):
     per_page = pagination.per_page or 5
 
-    # Нормализуем location: Moscow -> MOW, Sochi -> AER и т.п.
+    # сначала пробуем локальные алиасы (RU/EN -> IATA)
     if location:
         city_raw = location.strip()
-        if len(city_raw) == 3 and city_raw.isalpha():
-            # уже IATA-код
-            city_code = city_raw.upper()
-        else:
+        city_code = normalize_city_input(city_raw)
+
+        # если локально не получилось — пробуем Amadeus
+        if not city_code:
             am = AmadeusClient()
             city_code = await am.resolve_city_code(city_raw)
-            if not city_code:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Не удалось определить IATA-код для '{city_raw}'",
-                )
-        location = city_code
+
+        #  если код нашли — используем его (как раньше)
+        if city_code:
+            location = city_code
+        else:
+            # если ничего не нашли
+            # оставляем location как есть, чтобы поискать по нашей БД (например по location_ru или алиасам)
+            location = city_raw
 
     return await db.hotels.get_all(
         id=id,
@@ -58,7 +61,7 @@ async def delete_hotel(hotel_id:int,admin_id: AdminDep,db : DBDep ):
     return result
 
 # НУЖНО ЧТОБЫ ОН ТОЖЕ ПЕРЕДЕЛЫВАЛ ВБИТЫЙ ГОРОД ПО 3 БУКВЫ
-@router.post("", summary='Добавление нового отеля')
+@router.post("", summary="Добавление нового отеля")
 async def post_hotels(
     db: DBDep,
     admin_id: AdminDep,
@@ -66,33 +69,48 @@ async def post_hotels(
         openapi_examples={
             "1": {
                 "summary": "Сочи",
-                "value": {"title": "Сочи Гранд Отель", "location": "Sochi"}
+                "value": {
+                    "title": "Сочи Гранд Отель",
+                    "location": "Сочи",
+                    "images": ["https://picsum.photos/seed/sochi/900/600"],
+                },
             }
         }
-    )
+    ),
 ):
-    from src.clients.amadeus import AmadeusClient
-
-    # 1) приводим город/локацию к коду
     city_raw = hotel_data.location.strip()
-    if len(city_raw) == 3 and city_raw.isalpha():
-        city_code = city_raw.upper()
-    else:
+
+    # ✅ 1) сначала локально RU/EN -> IATA
+    city_code = normalize_city_input(city_raw)
+
+    # ✅ 2) если не получилось — пробуем Amadeus
+    if not city_code:
         am = AmadeusClient()
         city_code = await am.resolve_city_code(city_raw)
-        if not city_code:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Не удалось определить IATA-код для '{city_raw}'"
-            )
 
-    # 2) создаём копию данных, но с нормализованным city_code
-    normalized = HotelAdd(title=hotel_data.title, location=city_code)
+    if not city_code:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Не удалось определить IATA-код для '{city_raw}'",
+        )
 
-    # 3) сохраняем в БД
+    # ✅ 3) сохраняем ВСЕ поля (важно: images не потерять)
+    payload = {
+        "title": hotel_data.title,
+        "location": city_code,
+        "images": hotel_data.images,
+    }
+
+    # ✅ если у тебя уже добавлены поля варианта 2 — сохраним русские значения
+    if hasattr(HotelsOrm, "location_ru"):
+        payload["location_ru"] = city_raw
+    if hasattr(HotelsOrm, "title_ru"):
+        payload["title_ru"] = hotel_data.title  # или введёшь отдельно
+
+    normalized = HotelAdd(**payload)
+
     hotel = await db.hotels.add(normalized)
     await db.commit()
-
     return {"status": "ok", "saved": hotel}
 
 

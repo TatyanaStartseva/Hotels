@@ -1,15 +1,13 @@
-from sqlalchemy import insert, select, update, delete
-
+from sqlalchemy import select, or_
 from src.models.hotels import HotelsOrm
 from src.repositories.base import BaseRepository
-from pydantic import BaseModel
-
 from src.schemas.hotels import Hotel
 
 
 class HotelsRepository(BaseRepository):
     model = HotelsOrm
     schema = Hotel
+
     async def get_all(
         self,
         id: int | None = None,
@@ -24,25 +22,36 @@ class HotelsRepository(BaseRepository):
             query = query.where(self.model.id == id)
 
         if title:
-            like_expr = f"%{title}%"
-            query = query.where(self.model.title.ilike(like_expr))
+            t = title.strip()
+            like_expr = f"%{t}%"
+            query = query.where(
+                or_(
+                    self.model.title.ilike(like_expr),
+                    getattr(self.model, "title_ru", None).ilike(like_expr)
+                    if hasattr(self.model, "title_ru")
+                    else False,
+                )
+            )
 
         if location:
-            like_expr = f"%{location}%"
-            query = query.where(self.model.location.ilike(like_expr))
+            loc = location.strip()
+            like_expr = f"%{loc}%"
+            query = query.where(
+                or_(
+                    self.model.location.ilike(like_expr),
+                    getattr(self.model, "location_ru", None).ilike(like_expr)
+                    if hasattr(self.model, "location_ru")
+                    else False,
+                )
+            )
 
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
         hotels = result.scalars().all()
-        return [
-            self.schema.model_validate(hotel, from_attributes=True)
-            for hotel in hotels
-        ]
+        return [self.schema.model_validate(h, from_attributes=True) for h in hotels]
 
     async def get_hotel(self, id: int):
         query = select(self.model).where(self.model.id == id)
         result = await self.session.execute(query)
         return result.scalar_one()
-
-

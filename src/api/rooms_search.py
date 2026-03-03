@@ -49,9 +49,14 @@ async def rooms_search(
     # 1) фильтр по названию/городу (через отель)
     if q:
         like = f"%{q}%"
-        # у тебя в Hotel поле title и location
-        stmt = stmt.where(or_(HotelsOrm.title.ilike(like), HotelsOrm.location.ilike(like)))
-
+        stmt = stmt.where(
+            or_(
+                HotelsOrm.title.ilike(like),
+                HotelsOrm.location.ilike(like),
+                HotelsOrm.title_ru.ilike(like),
+                HotelsOrm.location_ru.ilike(like),
+            )
+        )
     # 2) фильтры по виду
     if species:
         stmt = stmt.where(

@@ -6,6 +6,8 @@ class HotelAdd(BaseModel):
     title: str
     location: str
     images: list[str] = Field(default_factory=list)
+    location_ru: str | None = None
+    title_ru: str | None = None
 
 class Hotel(HotelAdd):
     id : int
@@ -17,3 +19,5 @@ class HotelPatch(BaseModel):
     title: str | None = Field(None)
     location: str | None = Field(None)
     images: list[str] | None = None
+    location_ru: str | None = None
+    title_ru: str | None = None
