@@ -1,22 +1,32 @@
-// src/pages/HotelPage.tsx
-import { useEffect, useState } from "react";
+// hotels-frontend/src/pages/HotelPage.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
+
 import { getRooms, createRoom, deleteRoom, updateRoom } from "../api/rooms";
-import { createBooking } from "../api/bookings";
-import { getMe } from "../api/auth";
 import type { Room } from "../api/rooms";
+
+import { createBooking, getMyBookings } from "../api/bookings";
+import type { Booking } from "../api/bookings";
+
+import { getMe } from "../api/auth";
+
+import { getHotelReviews, createReview, replyReview } from "../api/reviews";
+import type { ReviewOut } from "../api/reviews";
 
 export default function HotelPage() {
   const { id } = useParams<{ id: string }>();
   const hotelId = Number(id);
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const [rooms, setRooms] = useState<Room[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  // добавление комнаты
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
+
+  // ---------- Admin: create room ----------
   const [newTitle, setNewTitle] = useState("");
   const [newPrice, setNewPrice] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number | "">("");
@@ -38,8 +48,9 @@ export default function HotelPage() {
   const [newLicenseRequired, setNewLicenseRequired] = useState(false);
   const [newCohabAllowed, setNewCohabAllowed] = useState(true);
 
-  // редактирование
+  // ---------- Admin: edit room ----------
   const [editingId, setEditingId] = useState<number | null>(null);
+
   const [editTitle, setEditTitle] = useState("");
   const [editPrice, setEditPrice] = useState<number | "">("");
   const [editQuantity, setEditQuantity] = useState<number | "">("");
@@ -61,21 +72,25 @@ export default function HotelPage() {
   const [editLicenseRequired, setEditLicenseRequired] = useState(false);
   const [editCohabAllowed, setEditCohabAllowed] = useState(true);
 
-  const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
+  // ---------- Reviews ----------
+  const [reviews, setReviews] = useState<ReviewOut[]>([]);
+  const [myBookings, setMyBookings] = useState<Booking[]>([]);
 
-  useEffect(() => {
-    if (!hotelId) return;
-    loadRooms();
-    checkMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hotelId]);
+  const [reviewBookingId, setReviewBookingId] = useState<number | "">("");
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewText, setReviewText] = useState<string>("");
 
-  useEffect(() => {
-    if (!hotelId) return;
-    loadRooms();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateFrom, dateTo]);
+  const [replyingReviewId, setReplyingReviewId] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState<string>("");
 
+  // ---------- helpers ----------
+  const roomIdSet = useMemo(() => new Set(rooms.map((r) => r.id)), [rooms]);
+
+  const myBookingsForThisHotel = useMemo(() => {
+    return myBookings.filter((b) => roomIdSet.has(b.room_id));
+  }, [myBookings, roomIdSet]);
+
+  // ---------- loaders ----------
   const checkMe = async () => {
     try {
       const me = await getMe();
@@ -87,16 +102,53 @@ export default function HotelPage() {
 
   const loadRooms = async () => {
     try {
-      const params =
-        dateFrom && dateTo ? { date_from: dateFrom, date_to: dateTo } : undefined;
-
+      const params = dateFrom && dateTo ? { date_from: dateFrom, date_to: dateTo } : undefined;
       const data = await getRooms(hotelId, params);
       setRooms(data);
     } catch (e) {
       console.error("loadRooms failed:", e);
+      setRooms([]);
     }
   };
 
+  const loadReviews = async () => {
+    try {
+      const data = await getHotelReviews(hotelId);
+      setReviews(data);
+    } catch (e) {
+      console.error("loadReviews failed:", e);
+      setReviews([]);
+    }
+  };
+
+  const loadMyBookings = async () => {
+    try {
+      const data = await getMyBookings();
+      setMyBookings(data);
+    } catch (e) {
+      console.error("loadMyBookings failed:", e);
+      setMyBookings([]);
+    }
+  };
+
+  // init on hotel change
+  useEffect(() => {
+    if (!hotelId) return;
+    loadRooms();
+    loadReviews();
+    loadMyBookings();
+    checkMe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelId]);
+
+  // reload availability on date change
+  useEffect(() => {
+    if (!hotelId) return;
+    loadRooms();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo]);
+
+  // ---------- actions ----------
   const handleBook = async (roomId: number) => {
     if (!dateFrom || !dateTo) {
       alert("Выбери даты");
@@ -114,18 +166,13 @@ export default function HotelPage() {
 
     try {
       setBookingRoomId(roomId);
-
-      await createBooking({
-        room_id: roomId,
-        date_from: dateFrom,
-        date_to: dateTo,
-      });
-
+      await createBooking({ room_id: roomId, date_from: dateFrom, date_to: dateTo });
       await loadRooms();
+      await loadMyBookings(); // чтобы сразу появилась бронь в отзывах
       alert("Бронь создана");
     } catch (e: any) {
       console.error("createBooking failed:", e);
-      alert(e?.message ?? "Ошибка при бронировании");
+      alert(e?.response?.data?.detail ?? e?.message ?? "Ошибка при бронировании");
     } finally {
       setBookingRoomId(null);
     }
@@ -137,20 +184,9 @@ export default function HotelPage() {
       return;
     }
 
-    const allowed_species = newAllowedSpecies
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const vaccinations_required = newVaccinations
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const diet_supported = newDietSupported
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const allowed_species = newAllowedSpecies.split(",").map((s) => s.trim()).filter(Boolean);
+    const vaccinations_required = newVaccinations.split(",").map((s) => s.trim()).filter(Boolean);
+    const diet_supported = newDietSupported.split(",").map((s) => s.trim()).filter(Boolean);
 
     try {
       await createRoom(hotelId, {
@@ -176,11 +212,11 @@ export default function HotelPage() {
         cohabitation_allowed: newCohabAllowed,
       });
 
-      // очистка
+      // reset
       setNewTitle("");
-      setNewDescription("");
       setNewPrice("");
       setNewQuantity("");
+      setNewDescription("");
 
       setNewAllowedSpecies("");
       setNewTempMin("");
@@ -201,11 +237,7 @@ export default function HotelPage() {
       await loadRooms();
     } catch (e: any) {
       console.error(e);
-      if (e?.response?.status === 403) {
-        alert("Нет прав: только администратор может добавлять комнаты");
-      } else {
-        alert("Ошибка при добавлении комнаты");
-      }
+      alert(e?.response?.data?.detail ?? "Ошибка при добавлении комнаты");
     }
   };
 
@@ -263,20 +295,9 @@ export default function HotelPage() {
   const saveEditRoom = async () => {
     if (!editingId) return;
 
-    const allowed_species = editAllowedSpecies
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const vaccinations_required = editVaccinations
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const diet_supported = editDietSupported
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const allowed_species = editAllowedSpecies.split(",").map((s) => s.trim()).filter(Boolean);
+    const vaccinations_required = editVaccinations.split(",").map((s) => s.trim()).filter(Boolean);
+    const diet_supported = editDietSupported.split(",").map((s) => s.trim()).filter(Boolean);
 
     try {
       await updateRoom(hotelId, editingId, {
@@ -307,11 +328,7 @@ export default function HotelPage() {
       cancelEditRoom();
     } catch (e: any) {
       console.error(e);
-      if (e?.response?.status === 403) {
-        alert("Нет прав: только администратор может изменять комнаты");
-      } else {
-        alert("Ошибка при изменении комнаты");
-      }
+      alert(e?.response?.data?.detail ?? "Ошибка при изменении комнаты");
     }
   };
 
@@ -322,16 +339,57 @@ export default function HotelPage() {
       await loadRooms();
     } catch (e: any) {
       console.error(e);
-      if (e?.response?.status === 403) {
-        alert("Нет прав: только администратор может удалять комнаты");
-      } else {
-        alert("Ошибка при удалении комнаты");
-      }
+      alert(e?.response?.data?.detail ?? "Ошибка при удалении комнаты");
     }
   };
 
+  // ---------- reviews actions ----------
+  const handleCreateReview = async () => {
+    if (reviewBookingId === "") {
+      alert("Выбери бронирование");
+      return;
+    }
+    if (!reviewText.trim()) {
+      alert("Напиши текст отзыва");
+      return;
+    }
+
+    try {
+      await createReview({
+        booking_id: Number(reviewBookingId),
+        rating: Number(reviewRating),
+        text: reviewText.trim(),
+      });
+      setReviewBookingId("");
+      setReviewRating(5);
+      setReviewText("");
+      await loadReviews();
+      alert("Отзыв отправлен");
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.response?.data?.detail ?? e?.message ?? "Ошибка при отправке отзыва");
+    }
+  };
+
+  const handleReplyReview = async (reviewId: number) => {
+    if (!replyText.trim()) {
+      alert("Напиши ответ");
+      return;
+    }
+    try {
+      await replyReview(reviewId, { owner_reply: replyText.trim() });
+      setReplyingReviewId(null);
+      setReplyText("");
+      await loadReviews();
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.response?.data?.detail ?? e?.message ?? "Ошибка при ответе");
+    }
+  };
+
+  // ---------- render ----------
   return (
-    <div style={{ maxWidth: 800, margin: "40px auto" }}>
+    <div style={{ maxWidth: 900, margin: "40px auto" }}>
       <h1>Отель #{hotelId}</h1>
 
       <div style={{ marginBottom: 20 }}>
@@ -342,25 +400,27 @@ export default function HotelPage() {
             value={dateFrom}
             min={today}
             onChange={(e) => setDateFrom(e.target.value)}
+            style={{ marginLeft: 8 }}
           />
         </label>
 
-        <label style={{ marginLeft: 10 }}>
+        <label style={{ marginLeft: 12 }}>
           Дата выезда:
           <input
             type="date"
             value={dateTo}
             min={dateFrom || today}
             onChange={(e) => setDateTo(e.target.value)}
+            style={{ marginLeft: 8 }}
           />
         </label>
       </div>
 
       <h2>Комнаты</h2>
 
-      <ul style={{ marginBottom: 20 }}>
+      <ul style={{ marginBottom: 20, paddingLeft: 18 }}>
         {rooms.map((r) => (
-          <li key={r.id} style={{ marginBottom: 10 }}>
+          <li key={r.id} style={{ marginBottom: 14 }}>
             {editingId === r.id ? (
               <div style={{ border: "1px solid #eee", padding: 10 }}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -368,9 +428,8 @@ export default function HotelPage() {
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     placeholder="Название"
-                    style={{ width: 200 }}
+                    style={{ width: 220 }}
                   />
-
                   <input
                     type="number"
                     value={editPrice}
@@ -380,7 +439,6 @@ export default function HotelPage() {
                     placeholder="Цена"
                     style={{ width: 120 }}
                   />
-
                   <input
                     type="number"
                     value={editQuantity}
@@ -406,9 +464,8 @@ export default function HotelPage() {
                     value={editAllowedSpecies}
                     onChange={(e) => setEditAllowedSpecies(e.target.value)}
                     placeholder="Разрешённые виды (cat,dog,...)"
-                    style={{ width: 260 }}
+                    style={{ width: 300 }}
                   />
-
                   <input
                     type="number"
                     value={editTempMin}
@@ -427,7 +484,6 @@ export default function HotelPage() {
                     placeholder="Темп. макс"
                     style={{ width: 120 }}
                   />
-
                   <input
                     type="number"
                     value={editHumMin}
@@ -452,27 +508,18 @@ export default function HotelPage() {
                   <input
                     value={editRoomConditions}
                     onChange={(e) => setEditRoomConditions(e.target.value)}
-                    placeholder="Условия комнаты (террариум, тишина...)"
+                    placeholder="Условия комнаты"
                     style={{ width: "100%" }}
                   />
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    marginTop: 8,
-                    alignItems: "center",
-                  }}
-                >
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
                   <input
                     value={editVaccinations}
                     onChange={(e) => setEditVaccinations(e.target.value)}
                     placeholder="Прививки (rabies,complex...)"
-                    style={{ width: 320 }}
+                    style={{ width: 340 }}
                   />
-
                   <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     Чип обязателен:
                     <input
@@ -483,22 +530,13 @@ export default function HotelPage() {
                   </label>
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 12,
-                    flexWrap: "wrap",
-                    marginTop: 8,
-                    alignItems: "center",
-                  }}
-                >
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
                   <input
                     value={editDietSupported}
                     onChange={(e) => setEditDietSupported(e.target.value)}
                     placeholder="Диеты (dry,natural...)"
-                    style={{ width: 320 }}
+                    style={{ width: 340 }}
                   />
-
                   <input
                     type="number"
                     value={editFeedingsMax}
@@ -510,15 +548,7 @@ export default function HotelPage() {
                   />
                 </div>
 
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 20,
-                    flexWrap: "wrap",
-                    marginTop: 8,
-                    alignItems: "center",
-                  }}
-                >
+                <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 8 }}>
                   <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
                     Лицензия нужна:
                     <input
@@ -569,27 +599,23 @@ export default function HotelPage() {
                   )}
                 </div>
 
-                {/* подробности номера */}
+                {/* подробности */}
                 <div style={{ marginTop: 6, paddingLeft: 10, color: "#444" }}>
                   {r.description && (
                     <div>
                       <span style={{ color: "gray" }}>Описание:</span> {r.description}
                     </div>
                   )}
-
                   {r.room_conditions && (
                     <div>
                       <span style={{ color: "gray" }}>Условия:</span> {r.room_conditions}
                     </div>
                   )}
-
                   {Array.isArray(r.allowed_species) && r.allowed_species.length > 0 && (
                     <div>
-                      <span style={{ color: "gray" }}>Животные:</span>{" "}
-                      {r.allowed_species.join(", ")}
+                      <span style={{ color: "gray" }}>Животные:</span> {r.allowed_species.join(", ")}
                     </div>
                   )}
-
                   {(r.temp_min != null || r.temp_max != null) && (
                     <div>
                       <span style={{ color: "gray" }}>Температура:</span>{" "}
@@ -597,7 +623,6 @@ export default function HotelPage() {
                       {r.temp_max != null ? `до ${r.temp_max}` : "—"} °C
                     </div>
                   )}
-
                   {(r.humidity_min != null || r.humidity_max != null) && (
                     <div>
                       <span style={{ color: "gray" }}>Влажность:</span>{" "}
@@ -605,42 +630,35 @@ export default function HotelPage() {
                       {r.humidity_max != null ? `до ${r.humidity_max}` : "—"} %
                     </div>
                   )}
-
                   {Array.isArray(r.vaccinations_required) && r.vaccinations_required.length > 0 && (
                     <div>
                       <span style={{ color: "gray" }}>Прививки:</span>{" "}
                       {r.vaccinations_required.join(", ")}
                     </div>
                   )}
-
                   {r.chip_required != null && (
                     <div>
                       <span style={{ color: "gray" }}>Чип:</span>{" "}
                       {r.chip_required ? "обязателен" : "не нужен"}
                     </div>
                   )}
-
                   {Array.isArray(r.diet_supported) && r.diet_supported.length > 0 && (
                     <div>
-                      <span style={{ color: "gray" }}>Диета:</span>{" "}
-                      {r.diet_supported.join(", ")}
+                      <span style={{ color: "gray" }}>Диета:</span> {r.diet_supported.join(", ")}
                     </div>
                   )}
-
                   {r.feedings_per_day_max != null && (
                     <div>
                       <span style={{ color: "gray" }}>Кормлений/день (макс):</span>{" "}
                       {r.feedings_per_day_max}
                     </div>
                   )}
-
                   {r.license_required != null && (
                     <div>
                       <span style={{ color: "gray" }}>Лицензия:</span>{" "}
                       {r.license_required ? "нужна" : "не нужна"}
                     </div>
                   )}
-
                   {r.cohabitation_allowed != null && (
                     <div>
                       <span style={{ color: "gray" }}>Совместно:</span>{" "}
@@ -654,9 +672,144 @@ export default function HotelPage() {
         ))}
       </ul>
 
-      {/* добавление комнаты — только админ */}
+      {/* ---------- Reviews ---------- */}
+      <div style={{ marginTop: 30, borderTop: "1px solid #eee", paddingTop: 20 }}>
+        <h2>Отзывы</h2>
+
+        <div style={{ border: "1px solid #ddd", padding: 12, marginBottom: 20 }}>
+          <h4 style={{ marginTop: 0 }}>Оставить отзыв</h4>
+
+          {myBookingsForThisHotel.length === 0 ? (
+            <p style={{ color: "gray" }}>
+              У тебя нет бронирований для этого отеля — отзыв оставить нельзя.
+            </p>
+          ) : (
+            <>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <label>
+                  Бронирование:
+                  <select
+                    value={reviewBookingId}
+                    onChange={(e) =>
+                      setReviewBookingId(e.target.value === "" ? "" : Number(e.target.value))
+                    }
+                    style={{ marginLeft: 8, minWidth: 260 }}
+                  >
+                    <option value="">— выбери —</option>
+                    {myBookingsForThisHotel.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        #{b.id} (room_id={b.room_id}) {b.date_from} → {b.date_to}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Оценка:
+                  <select
+                    value={reviewRating}
+                    onChange={(e) => setReviewRating(Number(e.target.value))}
+                    style={{ marginLeft: 8 }}
+                  >
+                    {[5, 4, 3, 2, 1].map((x) => (
+                      <option key={x} value={x}>
+                        {x}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <textarea
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  placeholder="Текст отзыва..."
+                  style={{ width: "100%", minHeight: 80 }}
+                />
+              </div>
+
+              <button style={{ marginTop: 10 }} onClick={handleCreateReview}>
+                Отправить отзыв
+              </button>
+            </>
+          )}
+        </div>
+
+        {reviews.length === 0 ? (
+          <p style={{ color: "gray" }}>Пока нет отзывов.</p>
+        ) : (
+          <ul style={{ paddingLeft: 16 }}>
+            {reviews.map((r) => (
+              <li key={r.id} style={{ marginBottom: 16 }}>
+                <div>
+                  <b>Оценка: {r.rating}/5</b>{" "}
+                  <span style={{ color: "gray" }}>
+                    — {new Date(r.created_at).toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ marginTop: 4 }}>{r.text}</div>
+
+                {r.owner_reply && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: 10,
+                      background: "#fafafa",
+                      border: "1px solid #eee",
+                    }}
+                  >
+                    <b>Ответ отеля:</b>
+                    <div style={{ marginTop: 4 }}>{r.owner_reply}</div>
+                  </div>
+                )}
+
+                {isAdmin && (
+                  <div style={{ marginTop: 8 }}>
+                    {replyingReviewId === r.id ? (
+                      <div>
+                        <textarea
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Ответ владельца/админа..."
+                          style={{ width: "100%", minHeight: 60 }}
+                        />
+                        <button
+                          onClick={() => handleReplyReview(r.id)}
+                          style={{ marginRight: 6 }}
+                        >
+                          Отправить ответ
+                        </button>
+                        <button
+                          onClick={() => {
+                            setReplyingReviewId(null);
+                            setReplyText("");
+                          }}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setReplyingReviewId(r.id);
+                          setReplyText("");
+                        }}
+                      >
+                        Ответить
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* ---------- Admin create room ---------- */}
       {isAdmin && (
-        <div style={{ border: "1px solid #ccc", padding: 12 }}>
+        <div style={{ border: "1px solid #ccc", padding: 12, marginTop: 26 }}>
           <h3>Добавить комнату</h3>
 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -664,7 +817,7 @@ export default function HotelPage() {
               placeholder="Название"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              style={{ width: 200 }}
+              style={{ width: 220 }}
             />
 
             <input
@@ -679,14 +832,16 @@ export default function HotelPage() {
               placeholder="Количество"
               type="number"
               value={newQuantity}
-              onChange={(e) => setNewQuantity(e.target.value === "" ? "" : Number(e.target.value))}
+              onChange={(e) =>
+                setNewQuantity(e.target.value === "" ? "" : Number(e.target.value))
+              }
               style={{ width: 140 }}
             />
           </div>
 
           <div style={{ marginTop: 10 }}>
             <input
-              placeholder="Описание (опционально)"
+              placeholder="Описание"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               style={{ width: "100%" }}
@@ -698,7 +853,7 @@ export default function HotelPage() {
               placeholder="Разрешённые виды (cat,dog...)"
               value={newAllowedSpecies}
               onChange={(e) => setNewAllowedSpecies(e.target.value)}
-              style={{ width: 260 }}
+              style={{ width: 300 }}
             />
 
             <input
@@ -734,19 +889,19 @@ export default function HotelPage() {
 
           <div style={{ marginTop: 10 }}>
             <input
-              placeholder="Условия комнаты (террариум, тишина...)"
+              placeholder="Условия комнаты"
               value={newRoomConditions}
               onChange={(e) => setNewRoomConditions(e.target.value)}
               style={{ width: "100%" }}
             />
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
             <input
               placeholder="Требуемые прививки (rabies,complex...)"
               value={newVaccinations}
               onChange={(e) => setNewVaccinations(e.target.value)}
-              style={{ width: 300 }}
+              style={{ width: 340 }}
             />
 
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -759,24 +914,26 @@ export default function HotelPage() {
             </label>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
             <input
-              placeholder="Поддерживаемая диета (dry,natural...)"
+              placeholder="Диеты (dry,natural...)"
               value={newDietSupported}
               onChange={(e) => setNewDietSupported(e.target.value)}
-              style={{ width: 300 }}
+              style={{ width: 340 }}
             />
 
             <input
               placeholder="Макс. кормлений/день"
               type="number"
               value={newFeedingsMax}
-              onChange={(e) => setNewFeedingsMax(e.target.value === "" ? "" : Number(e.target.value))}
-              style={{ width: 200 }}
+              onChange={(e) =>
+                setNewFeedingsMax(e.target.value === "" ? "" : Number(e.target.value))
+              }
+              style={{ width: 220 }}
             />
           </div>
 
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
               Лицензия нужна:
               <input

@@ -34,7 +34,6 @@ class RoomsRepositories(BaseRepository):
 
             available = max(0, room.quantity - booked)
 
-            # ✅ возвращаем ВСЕ поля комнаты + available
             result.append({
                 "id": room.id,
                 "hotel_id": room.hotel_id,
@@ -62,3 +61,8 @@ class RoomsRepositories(BaseRepository):
             })
 
         return result
+
+    async def get_room(self, room_id: int):
+        q = select(self.model).where(self.model.id == room_id)
+        res = await self.session.execute(q)
+        return res.scalar_one_or_none()

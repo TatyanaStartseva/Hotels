@@ -16,7 +16,7 @@ from src.database import *
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.rooms_search import router as router_rooms_search
 from src.api.rooms_search import router as rooms_search_router
-
+from src.api.reviews import router as reviews_router
 app = FastAPI(docs_url=None)
 
 app.add_middleware(
@@ -26,7 +26,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.include_router(reviews_router)
 app.include_router(rooms_search_router)
 app.include_router(router_rooms_search)
 app.include_router(router_auth)
