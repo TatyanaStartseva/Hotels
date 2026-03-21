@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class PetAddRequest(BaseModel):
+    name: str | None = None
     temperature_min: float | None = None
     temperature_max: float | None = None
     humidity_min: float | None = None
@@ -25,9 +26,11 @@ class PetAddRequest(BaseModel):
 
 class PetAdd(PetAddRequest):
     user_id: int
+    name:str
 
 
 class PetUpdate(BaseModel):
+    name: str| None = None
     temperature_min: float | None = None
     temperature_max: float | None = None
     humidity_min: float | None = None

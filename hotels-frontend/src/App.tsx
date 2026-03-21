@@ -14,8 +14,9 @@ function App() {
         <Route path="/" element={<HotelsPage />} />
         <Route path="/hotels/:id" element={<HotelPage />} />
         <Route path="/bookings" element={<BookingsPage />} />
-        <Route path="*" element={<Navigate to="/" />} />
         <Route path="/pets" element={<PetsPage />} />
+        <Route path="*" element={<Navigate to="/" />} />
+
 
       </Routes>
     </BrowserRouter>

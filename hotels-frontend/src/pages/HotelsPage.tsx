@@ -439,6 +439,12 @@ await updateHotel(editingId, {
           >
             Войти
           </button>
+            <button
+    onClick={() => navigate("/pets")}
+    style={{ marginRight: 10 }}
+  >
+    Мои питомцы
+  </button>
           <button onClick={() => navigate("/bookings")}>
             Мои бронирования
           </button>
@@ -482,11 +488,25 @@ await updateHotel(editingId, {
               style={{ marginLeft: 8, minWidth: 280 }}
             >
               <option value="">— не выбран (ввод вручную) —</option>
-              {pets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  #{p.id}{p.conditions ? ` — ${p.conditions}` : ""}
-                </option>
-              ))}
+              {pets.map((p) => {
+  const speciesLabel =
+    p.species === "cat" ? "Кошка" :
+    p.species === "dog" ? "Собака" :
+    p.species === "rabbit" ? "Кролик" :
+    p.species === "rodent" ? "Грызун" :
+    p.species === "bird" ? "Птица" :
+    p.species === "snake" ? "Змея" :
+    p.species === "reptile" ? "Рептилия" :
+    p.species === "spider" ? "Паук" :
+    "Питомец";
+
+  return (
+    <option key={p.id} value={p.id}>
+      {p.name} — {speciesLabel}
+      {p.conditions ? ` (${p.conditions})` : ""}
+    </option>
+  );
+})}
             </select>
           </label>
 

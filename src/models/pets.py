@@ -1,6 +1,6 @@
 # src/models/pets.py
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB
 from src.database import Base
 
@@ -11,8 +11,8 @@ class PetsOrm(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
-    # ✅ ВИД ЖИВОТНОГО
     species: Mapped[str] = mapped_column(default="unknown")  # cat/dog/snake/bird/rodent/spider/reptile...
+    name : Mapped[str]= mapped_column(String(100))
 
     temperature_min: Mapped[float | None]
     temperature_max: Mapped[float | None]
