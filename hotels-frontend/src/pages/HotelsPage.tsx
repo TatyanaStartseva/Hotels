@@ -11,6 +11,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { getMe } from "../api/auth";
 import { getMyPets, type Pet } from "../api/pets";
 import { searchRooms, type RoomSearchOut } from "../api/roomsSearch";
+import AdBanner from "../components/AdBanner";
+import AdsGrid from "../components/AdsGrid";
 
 type SpeciesOption = { label: string; value: string };
 type ConditionOption = { label: string; value: string };
@@ -186,7 +188,7 @@ export default function HotelsPage() {
     }
   };
 
-  // ✅ включён ли фильтр питомца
+  // включён ли фильтр питомца
   const petFiltersEnabled = useMemo(() => {
     if (selectedPetId) return true;
     if (species) return true;
@@ -429,6 +431,23 @@ await updateHotel(editingId, {
   };
 
   return (
+      <div style={{ maxWidth: 1400, margin: "40px auto" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "250px 1fr 250px",
+        gap: 20,
+        alignItems: "start",
+      }}
+    >
+      {/* ЛЕВАЯ РЕКЛАМА */}
+      <div>
+      <div style={{ marginTop:300 }} >
+        <AdBanner />
+        <div style={{ height: 16 }} />
+        <AdBanner />
+      </div>
+      </div>
     <div style={{ maxWidth: 800, margin: "40px auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h1>Отели</h1>
@@ -473,7 +492,7 @@ await updateHotel(editingId, {
         <button onClick={searchByTitle}>Найти по названию</button>
       </div>
 
-      {/* ✅ Фильтр по требованиям питомца */}
+      {/*Фильтр по требованиям питомца */}
       <div style={{ border: "1px solid #ddd", padding: 12, marginBottom: 20 }}>
         <h3 style={{ marginTop: 0 }}>Фильтр по требованиям питомца</h3>
 
@@ -750,5 +769,15 @@ await updateHotel(editingId, {
         </ul>
       )}
     </div>
+    {/* ПРАВАЯ РЕКЛАМА */}
+      <div>
+      <div style={{ marginTop:300 }} >
+        <AdBanner />
+        <div style={{ height:16 }} />
+        <AdBanner />
+        </div>
+      </div>
+    </div>
+  </div>
   );
 }

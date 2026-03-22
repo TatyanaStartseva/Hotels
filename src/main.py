@@ -17,6 +17,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.rooms_search import router as router_rooms_search
 from src.api.rooms_search import router as rooms_search_router
 from src.api.reviews import router as reviews_router
+from src.api.ads import router as router_ads
+
+
 app = FastAPI(docs_url=None)
 
 app.add_middleware(
@@ -34,6 +37,7 @@ app.include_router(router_hotels)
 app.include_router(router_rooms)
 app.include_router(router_bookings)
 app.include_router(router_pets)
+app.include_router(router_ads)
 
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
