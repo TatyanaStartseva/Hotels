@@ -1,3 +1,4 @@
+import axios from "axios";
 import { api } from "./client";
 
 export type Booking = {
@@ -5,16 +6,12 @@ export type Booking = {
   room_id: number;
   user_id?: number;
   pet_id?: number;
-
   hotel_title?: string;
   pet_name?: string;
-
   date_from?: string;
   date_to?: string;
-
   start_date?: string;
   end_date?: string;
-
   status?: string;
 };
 
@@ -37,12 +34,16 @@ export async function createBooking(payload: BookingCreate) {
   return res.data;
 }
 
-export async function cancelBooking(bookingId: number) {
+export async function deleteBooking(bookingId: number) {
   try {
-    const res = await api.patch(`/bookings/${bookingId}/cancel`);
-    return res.data;
-  } catch {
     const res = await api.delete(`/bookings/${bookingId}`);
     return res.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const message =
+        error.response?.data?.detail || "Не удалось удалить бронирование";
+      throw new Error(message);
+    }
+    throw new Error("Неизвестная ошибка при удалении бронирования");
   }
 }

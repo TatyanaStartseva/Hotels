@@ -2,7 +2,7 @@ import "./BookingsPage.css";
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getMyBookings, cancelBooking } from "../api/bookings";
+import { getMyBookings, deleteBooking } from "../api/bookings";
 
 type Booking = {
   id: number;
@@ -40,14 +40,15 @@ export default function BookingsPage() {
   };
 
   const handleCancel = async (id: number) => {
-    if (!confirm("Отменить бронирование?")) return;
+    if (!confirm("Удалить бронирование?")) return;
 
     try {
-      await cancelBooking(id);
+      await deleteBooking(id);
       await loadBookings();
-    } catch (e) {
-      console.error(e);
-      alert("Ошибка при отмене бронирования");
+      alert("Бронирование успешно удалено");
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "Ошибка при удалении бронирования");
     }
   };
 
@@ -105,7 +106,7 @@ export default function BookingsPage() {
                       className="bookings-btn bookings-btn--danger"
                       onClick={() => handleCancel(booking.id)}
                     >
-                      Отменить
+                      Удалить
                     </button>
                   </div>
                 </div>

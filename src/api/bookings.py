@@ -1,7 +1,8 @@
 from fastapi import APIRouter
+from impit.impit import delete
 
-from src.api.dependencies import DBDep, UserIdDep
-from src.schemas.bookings import BookingAddRequest, BookingAdd
+from src.api.dependencies import DBDep, UserIdDep, AdminDep
+from src.schemas.bookings import BookingAddRequest, BookingAdd, Booking
 from sqlalchemy import select, func
 from fastapi import HTTPException
 from src.models.rooms import RoomsOrm
@@ -75,3 +76,12 @@ async def add_booking(user_id: UserIdDep, db: DBDep, booking_data: BookingAddReq
     return {"status": "OK", "data": booking}
 
 
+@router.delete("/{booking_id}")
+async def delete_booking(db:DBDep, booking_id: int):
+    res_reviews = await  db.reviews.get_one_or_none(booking_id= booking_id)
+    if res_reviews is None:
+        res = await db.bookings.delete(id=booking_id)
+    else:
+        raise HTTPException(status_code=409,detail='Вы не можете удалить данную бронь, т.к. у Вас есть отзыв на это бронирование')
+    await db.commit()
+    return {"message": "Бронирование удалено", "result": res}

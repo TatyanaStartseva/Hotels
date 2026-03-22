@@ -4,6 +4,7 @@ export interface Hotel {
   id: number;
   title: string;
   location: string;
+  location_ru?: string;
 }
 
 export async function getHotels(params?: {

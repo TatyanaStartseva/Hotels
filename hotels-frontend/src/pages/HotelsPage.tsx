@@ -507,6 +507,15 @@ export default function HotelsPage() {
                 >
                   Мои бронирования
                 </button>
+                {isAdmin && (
+    <button
+      type="button"
+      className="hotels-btn hotels-btn--primary"
+      onClick={() => navigate("/admin/ads")}
+    >
+      Управление рекламой
+    </button>
+  )}
               </div>
             </div>
           </section>
@@ -858,8 +867,12 @@ export default function HotelsPage() {
                         )}
 
                         <div className="hotels-item-card__info">
-                          <div className="hotels-item-card__title">{h.title}</div>
-                          <div className="hotels-item-card__location">{h.location}</div>
+                          <div className="hotels-item-card__title">
+                            {h.title_ru?.trim() ? h.title_ru : h.title}
+                          </div>
+                          <div className="hotels-item-card__location">
+                              {h.location_ru?.trim() ? h.location_ru : h.location}
+                            </div>
                         </div>
                       </Link>
 

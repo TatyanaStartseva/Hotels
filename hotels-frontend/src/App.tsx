@@ -5,32 +5,29 @@ import HotelsPage from "./pages/HotelsPage";
 import HotelPage from "./pages/HotelPage";
 import BookingsPage from "./pages/BookingsPage";
 import PetsPage from "./pages/PetsPage";
-import Header from "./components/Header";
 import AdminAdsPage from "./pages/AdminAdsPage";
 import AdminRoute from "./components/AdminRoute";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Header />
-
-      <Routes>
-      <Route
-  path="/admin/ads"
-  element={
-    <AdminRoute>
-      <AdminAdsPage />
-    </AdminRoute>
-  }
-/>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<HotelsPage />} />
-        <Route path="/hotels/:id" element={<HotelPage />} />
-        <Route path="/bookings" element={<BookingsPage />} />
-        <Route path="/pets" element={<PetsPage />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-    </BrowserRouter>
+  <BrowserRouter>
+  <Routes>
+    <Route
+      path="/admin/ads"
+      element={
+        <AdminRoute>
+          <AdminAdsPage />
+        </AdminRoute>
+      }
+    />
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="/" element={<HotelsPage />} />
+    <Route path="/hotels/:id" element={<HotelPage />} />
+    <Route path="/bookings" element={<BookingsPage />} />
+    <Route path="/pets" element={<PetsPage />} />
+    <Route path="*" element={<Navigate to="/" />} />
+  </Routes>
+</BrowserRouter>
   );
 }
 
