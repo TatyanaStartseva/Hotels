@@ -51,3 +51,28 @@ class AdsRepository(BaseRepository):
         )
         res = await self.session.execute(q)
         return res.all()
+
+    async def get_all_ads(self):
+        q = select(self.model).order_by(self.model.id.desc())
+        res = await self.session.execute(q)
+        return res.scalars().all()
+
+    async def update_ad(self, ad_id: int, data: dict):
+        obj = await self.get_one_or_none(id=ad_id)
+        if not obj:
+            return None
+
+        for key, value in data.items():
+            setattr(obj, key, value)
+
+        await self.session.flush()
+        return obj
+
+    async def delete_ad(self, ad_id: int):
+        obj = await self.get_one_or_none(id=ad_id)
+        if not obj:
+            return False
+
+        await self.session.delete(obj)
+        await self.session.flush()
+        return True
