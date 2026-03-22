@@ -1,40 +1,149 @@
-// src/pages/BookingsPage.tsx
+import "./BookingsPage.css";
+
 import { useEffect, useState } from "react";
-import { getMyBookings } from "../api/bookings";
+import { useNavigate } from "react-router-dom";
+import { getMyBookings, cancelBooking } from "../api/bookings";
+
+type Booking = {
+  id: number;
+  room_id?: number;
+  hotel_title?: string;
+  pet_name?: string;
+  date_from?: string;
+  date_to?: string;
+  status?: string;
+};
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    getMyBookings()
-      .then(setBookings)
-      .catch((err: any) => {
-        if (err?.response?.status === 401) {
-          setError("Вы не авторизованы. Войдите в аккаунт.");
-        } else {
-          setError("Ошибка при загрузке бронирований.");
-        }
-      });
+    loadBookings();
   }, []);
 
+  const loadBookings = async () => {
+    setMessage(null);
+    try {
+      const data = await getMyBookings();
+      setBookings(data);
+
+      if (!data.length) {
+        setMessage("У вас пока нет бронирований.");
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage("Ошибка при загрузке бронирований.");
+    }
+  };
+
+  const handleCancel = async (id: number) => {
+    if (!confirm("Отменить бронирование?")) return;
+
+    try {
+      await cancelBooking(id);
+      await loadBookings();
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при отмене бронирования");
+    }
+  };
+
   return (
-    <div style={{ maxWidth: 800, margin: "40px auto" }}>
-      <h1>Мои бронирования</h1>
+    <div className="bookings-page">
+      <div className="bookings-page__container">
+        <section className="bookings-card bookings-hero">
+          <div className="bookings-hero__top">
+            <div>
+              <h1 className="bookings-hero__title">Мои бронирования</h1>
+              <p className="bookings-hero__subtitle">
+                Управляйте активными и завершёнными бронированиями
+              </p>
+            </div>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+            <div className="bookings-actions">
+              <button
+                type="button"
+                className="bookings-btn bookings-btn--secondary"
+                onClick={() => navigate("/pets")}
+              >
+                Мои питомцы
+              </button>
 
-      {bookings.length === 0 && !error && (
-        <p>У вас пока нет бронирований.</p>
-      )}
+              <button
+                type="button"
+                className="bookings-btn bookings-btn--primary"
+                onClick={() => navigate("/hotels")}
+              >
+                К отелям
+              </button>
+            </div>
+          </div>
+        </section>
 
-      <ul>
-        {bookings.map(b => (
-          <li key={b.id}>
-            Комната {b.room_id}, с {b.date_from} по {b.date_to}, цена {b.price}
-          </li>
-        ))}
-      </ul>
+        {message && <div className="bookings-message">{message}</div>}
+
+        {bookings.length > 0 && (
+          <section className="bookings-list">
+            {bookings.map((booking) => (
+              <article key={booking.id} className="bookings-item">
+                <div className="bookings-item__top">
+                  <div>
+                    <h3 className="bookings-item__title">
+                      {booking.hotel_title || `Бронирование #${booking.id}`}
+                    </h3>
+                    <p className="bookings-item__subtitle">
+                      Питомец: {booking.pet_name || "Не указано"}
+                    </p>
+                  </div>
+
+                  <div className="bookings-actions">
+                    <button
+                      type="button"
+                      className="bookings-btn bookings-btn--danger"
+                      onClick={() => handleCancel(booking.id)}
+                    >
+                      Отменить
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bookings-grid">
+                  <div className="bookings-box">
+                    <div className="bookings-box__label">Комната</div>
+                    <div className="bookings-box__value">
+                      {booking.room_id ?? "Не указано"}
+                    </div>
+                  </div>
+
+                  <div className="bookings-box">
+                    <div className="bookings-box__label">Статус</div>
+                    <div className="bookings-box__value">
+                      {booking.status || "Не указано"}
+                    </div>
+                  </div>
+
+                  <div className="bookings-box">
+                    <div className="bookings-box__label">Дата заезда</div>
+                    <div className="bookings-box__value">
+                      {booking.date_from || "Не указано"}
+                    </div>
+                  </div>
+
+                  <div className="bookings-box">
+                    <div className="bookings-box__label">Дата выезда</div>
+                    <div className="bookings-box__value">
+                      {booking.date_to || "Не указано"}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
     </div>
   );
 }

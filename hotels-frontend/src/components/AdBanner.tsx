@@ -1,3 +1,4 @@
+import "./AdBanner.css";
 import { useEffect, useState } from "react";
 import { getRandomAd, registerAdClick, type AdOut } from "../api/ads";
 
@@ -14,6 +15,7 @@ export default function AdBanner() {
         setAd(null);
       }
     };
+
     load();
   }, []);
 
@@ -27,32 +29,27 @@ export default function AdBanner() {
     }
   };
 
-  const content = (
-    <div
-      style={{
-        border: "1px solid #ddd",
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 20,
-        background: "#fafafa",
-      }}
-    >
-      {ad.image_url && (
+  const cardContent = (
+    <>
+      <div className="ad-banner__badge">Реклама</div>
+
+      {ad.image_url ? (
         <img
           src={ad.image_url}
           alt={ad.title}
-          style={{
-            width: "100%",
-            maxHeight: 250,
-            objectFit: "cover",
-            borderRadius: 8,
-            marginBottom: 10,
-          }}
+          className="ad-banner__image"
         />
+      ) : (
+        <div className="ad-banner__image ad-banner__image--empty" />
       )}
-      <div style={{ fontWeight: 700 }}>{ad.title}</div>
 
-    </div>
+      <div className="ad-banner__body">
+        <h3 className="ad-banner__title">{ad.title}</h3>
+        {ad.description && (
+          <p className="ad-banner__description">{ad.description}</p>
+        )}
+      </div>
+    </>
   );
 
   if (ad.target_url) {
@@ -62,12 +59,16 @@ export default function AdBanner() {
         target="_blank"
         rel="noreferrer"
         onClick={handleClick}
-        style={{ textDecoration: "none", color: "inherit" }}
+        className="ad-banner"
       >
-        {content}
+        {cardContent}
       </a>
     );
   }
 
-  return <div onClick={handleClick}>{content}</div>;
+  return (
+    <div className="ad-banner" onClick={handleClick}>
+      {cardContent}
+    </div>
+  );
 }

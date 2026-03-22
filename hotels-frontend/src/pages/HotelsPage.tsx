@@ -1,4 +1,4 @@
-// src/pages/HotelsPage.tsx
+import "./HotelsPage.css"
 import { useEffect, useMemo, useState } from "react";
 import {
   getHotels,
@@ -12,7 +12,6 @@ import { getMe } from "../api/auth";
 import { getMyPets, type Pet } from "../api/pets";
 import { searchRooms, type RoomSearchOut } from "../api/roomsSearch";
 import AdBanner from "../components/AdBanner";
-import AdsGrid from "../components/AdsGrid";
 
 type SpeciesOption = { label: string; value: string };
 type ConditionOption = { label: string; value: string };
@@ -41,7 +40,6 @@ const CONDITIONS_OPTIONS: ConditionOption[] = [
 ];
 
 function conditionValueToText(v: string): string {
-  // что отправим на бэк в параметр conditions (текст, который можно искать в room_conditions)
   switch (v) {
     case "standard":
       return "стандарт";
@@ -62,6 +60,29 @@ function conditionValueToText(v: string): string {
   }
 }
 
+function getSpeciesLabel(species?: string) {
+  switch (species) {
+    case "cat":
+      return "Кошка";
+    case "dog":
+      return "Собака";
+    case "rabbit":
+      return "Кролик";
+    case "rodent":
+      return "Грызун";
+    case "bird":
+      return "Птица";
+    case "snake":
+      return "Змея";
+    case "reptile":
+      return "Рептилия";
+    case "spider":
+      return "Паук";
+    default:
+      return "Питомец";
+  }
+}
+
 export default function HotelsPage() {
   const [hotels, setHotels] = useState<Hotel[]>([]);
   const [city, setCity] = useState("");
@@ -75,27 +96,23 @@ export default function HotelsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
 
-  // состояние для редактирования
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
 
-  //  питомцы и требования
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<number | "">("");
 
-  // Вид и условия — теперь селекты
-  const [species, setSpecies] = useState<string>(""); // cat/dog...
-  const [conditionsKey, setConditionsKey] = useState<string>(""); // enum key
+  const [species, setSpecies] = useState<string>("");
+  const [conditionsKey, setConditionsKey] = useState<string>("");
 
-  // прочие фильтры
   const [tMin, setTMin] = useState<number | "">("");
   const [tMax, setTMax] = useState<number | "">("");
   const [hMin, setHMin] = useState<number | "">("");
   const [hMax, setHMax] = useState<number | "">("");
 
-  const [vaccinationsText, setVaccinationsText] = useState(""); // "rabies, complex"
+  const [vaccinationsText, setVaccinationsText] = useState("");
   const [licenseRequired, setLicenseRequired] = useState<boolean | "">("");
   const [cohabAllowed, setCohabAllowed] = useState<boolean | "">("");
 
@@ -135,13 +152,13 @@ export default function HotelsPage() {
     }
   };
 
-  // если выбрали питомца — подставим значения (НО пользователь может менять)
   useEffect(() => {
     if (!selectedPetId) return;
+
     const pet = pets.find((p) => p.id === selectedPetId);
     if (!pet) return;
 
-    // @ts-ignore - если в твоём Pet пока нет species, оставь пустым или добавь на бэке
+    // @ts-ignore
     setSpecies((pet as any).species ?? "");
 
     setTMin(pet.temperature_min ?? "");
@@ -149,7 +166,6 @@ export default function HotelsPage() {
     setHMin(pet.humidity_min ?? "");
     setHMax(pet.humidity_max ?? "");
 
-    // условия питомца (текст) пытаемся сопоставить с ключом
     const c = (pet.conditions ?? "").toLowerCase();
     if (c.includes("терра")) setConditionsKey("terrarium");
     else if (c.includes("подог") || c.includes("уф")) setConditionsKey("heating_uv");
@@ -171,6 +187,7 @@ export default function HotelsPage() {
       v.length && typeof v[0] === "string"
         ? (v as string[])
         : v.map((x) => (x?.name ? String(x.name) : "")).filter(Boolean);
+
     setVaccinationsText(names.join(", "));
   }, [selectedPetId, pets]);
 
@@ -188,7 +205,6 @@ export default function HotelsPage() {
     }
   };
 
-  // включён ли фильтр питомца
   const petFiltersEnabled = useMemo(() => {
     if (selectedPetId) return true;
     if (species) return true;
@@ -219,9 +235,7 @@ export default function HotelsPage() {
     const params: Record<string, any> = {};
 
     if (selectedPetId) params.pet_id = selectedPetId;
-
     if (species) params.species = species;
-
     if (tMin !== "") params.temperature_min = Number(tMin);
     if (tMax !== "") params.temperature_max = Number(tMax);
     if (hMin !== "") params.humidity_min = Number(hMin);
@@ -241,6 +255,7 @@ export default function HotelsPage() {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
+
     if (vacc.length) params.vaccinations = vacc;
 
     return params;
@@ -251,25 +266,28 @@ export default function HotelsPage() {
 
     for (const r of rooms) {
       const h = r.hotel;
-
-      const titleValue =
-        (h as any).title ?? (h as any).name ?? `Отель #${h.id}`;
+      const titleValue = (h as any).title ?? (h as any).name ?? `Отель #${h.id}`;
       const locationValue = (h as any).location ?? "";
 
       if (!map.has(h.id)) {
-        map.set(h.id, {
-          id: h.id,
-          title: titleValue,
-          location: locationValue,
-        } as Hotel);
+        map.set(
+          h.id,
+          {
+            id: h.id,
+            title: titleValue,
+            location: locationValue,
+          } as Hotel
+        );
       }
     }
+
     return Array.from(map.values());
   };
 
   const searchByCity = async () => {
     setMessage(null);
     const text = city.trim();
+
     if (!text) {
       await loadAll();
       return;
@@ -279,6 +297,7 @@ export default function HotelsPage() {
       if (petFiltersEnabled) {
         const params = buildPetParams();
         params.q = text;
+
         const rooms = await searchRooms(params);
         const filteredHotels = hotelsFromRoomsSearch(rooms);
         setHotels(filteredHotels);
@@ -291,6 +310,7 @@ export default function HotelsPage() {
 
       const data = await getHotels({ location: text });
       setHotels(data);
+
       if (data.length === 0) {
         setMessage("Отели в этом городе не найдены.");
       }
@@ -303,6 +323,7 @@ export default function HotelsPage() {
   const searchByTitle = async () => {
     setMessage(null);
     const text = title.trim();
+
     if (!text) {
       await loadAll();
       return;
@@ -312,6 +333,7 @@ export default function HotelsPage() {
       if (petFiltersEnabled) {
         const params = buildPetParams();
         params.q = text;
+
         const rooms = await searchRooms(params);
         const filteredHotels = hotelsFromRoomsSearch(rooms);
         setHotels(filteredHotels);
@@ -324,6 +346,7 @@ export default function HotelsPage() {
 
       const data = await getHotels({ title: text });
       setHotels(data);
+
       if (data.length === 0) {
         setMessage("Отели с таким названием не найдены.");
       }
@@ -334,35 +357,37 @@ export default function HotelsPage() {
   };
 
   const handleCreateHotel = async () => {
-  if (!newTitle || !newLocation) {
-    alert("Заполните название и город");
-    return;
-  }
-  try {
-    const url = newImageUrl.trim();
-
-    await createHotel({
-      title: newTitle,
-      location: newLocation,
-      images: url ? [url] : [],
-    });
-
-    setNewTitle("");
-    setNewLocation("");
-    setNewImageUrl("");
-    await loadAll();
-  } catch (e: any) {
-    console.error(e);
-    if (e?.response?.status === 403) {
-      alert("Нет прав: только администратор может добавлять отели");
-    } else {
-      alert("Ошибка при создании отеля");
+    if (!newTitle || !newLocation) {
+      alert("Заполните название и город");
+      return;
     }
-  }
-};
+
+    try {
+      const url = newImageUrl.trim();
+
+      await createHotel({
+        title: newTitle,
+        location: newLocation,
+        images: url ? [url] : [],
+      });
+
+      setNewTitle("");
+      setNewLocation("");
+      setNewImageUrl("");
+      await loadAll();
+    } catch (e: any) {
+      console.error(e);
+      if (e?.response?.status === 403) {
+        alert("Нет прав: только администратор может добавлять отели");
+      } else {
+        alert("Ошибка при создании отеля");
+      }
+    }
+  };
 
   const handleDeleteHotel = async (id: number) => {
     if (!confirm("Удалить отель?")) return;
+
     try {
       await deleteHotel(id);
       await loadAll();
@@ -377,31 +402,37 @@ export default function HotelsPage() {
   };
 
   const startEdit = (hotel: Hotel) => {
-  setEditingId(hotel.id);
-  setEditTitle(hotel.title);
-  setEditLocation(hotel.location);
+    setEditingId(hotel.id);
+    setEditTitle(hotel.title);
+    setEditLocation(hotel.location);
 
-  const firstImg =
-    (hotel as any).images && (hotel as any).images.length ? (hotel as any).images[0] : "";
-  setEditImageUrl(firstImg);
-};
+    const firstImg =
+      (hotel as any).images && (hotel as any).images.length
+        ? (hotel as any).images[0]
+        : "";
+
+    setEditImageUrl(firstImg);
+  };
 
   const cancelEdit = () => {
-  setEditingId(null);
-  setEditTitle("");
-  setEditLocation("");
-  setEditImageUrl("");
-};
+    setEditingId(null);
+    setEditTitle("");
+    setEditLocation("");
+    setEditImageUrl("");
+  };
+
   const saveEdit = async () => {
     if (!editingId) return;
+
     try {
       const url = editImageUrl.trim();
 
-await updateHotel(editingId, {
-  title: editTitle,
-  location: editLocation,
-  images: url ? [url] : [],
-});
+      await updateHotel(editingId, {
+        title: editTitle,
+        location: editLocation,
+        images: url ? [url] : [],
+      });
+
       await loadAll();
       cancelEdit();
     } catch (e: any) {
@@ -431,353 +462,441 @@ await updateHotel(editingId, {
   };
 
   return (
-      <div style={{ maxWidth: 1400, margin: "40px auto" }}>
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "250px 1fr 250px",
-        gap: 20,
-        alignItems: "start",
-      }}
-    >
-      {/* ЛЕВАЯ РЕКЛАМА */}
-      <div>
-      <div style={{ marginTop:300 }} >
-        <AdBanner />
-        <div style={{ height: 16 }} />
-        <AdBanner />
-      </div>
-      </div>
-    <div style={{ maxWidth: 800, margin: "40px auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <h1>Отели</h1>
-        <div>
-          <button
-            onClick={() => navigate("/login")}
-            style={{ marginRight: 10 }}
-          >
-            Войти
-          </button>
-            <button
-    onClick={() => navigate("/pets")}
-    style={{ marginRight: 10 }}
-  >
-    Мои питомцы
-  </button>
-          <button onClick={() => navigate("/bookings")}>
-            Мои бронирования
-          </button>
-        </div>
-      </div>
-
-      {/* Поиск по городу */}
-      <div style={{ marginBottom: 10 }}>
-        <input
-          placeholder="Город (Moscow, MOW...)"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          style={{ marginRight: 8 }}
-        />
-        <button onClick={searchByCity}>Найти по городу</button>
-      </div>
-
-      {/* Поиск по названию */}
-      <div style={{ marginBottom: 20 }}>
-        <input
-          placeholder="Название отеля"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={{ marginRight: 8 }}
-        />
-        <button onClick={searchByTitle}>Найти по названию</button>
-      </div>
-
-      {/*Фильтр по требованиям питомца */}
-      <div style={{ border: "1px solid #ddd", padding: 12, marginBottom: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Фильтр по требованиям питомца</h3>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <label>
-            Питомец:
-            <select
-              value={selectedPetId}
-              onChange={(e) =>
-                setSelectedPetId(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              style={{ marginLeft: 8, minWidth: 280 }}
-            >
-              <option value="">— не выбран (ввод вручную) —</option>
-              {pets.map((p) => {
-  const speciesLabel =
-    p.species === "cat" ? "Кошка" :
-    p.species === "dog" ? "Собака" :
-    p.species === "rabbit" ? "Кролик" :
-    p.species === "rodent" ? "Грызун" :
-    p.species === "bird" ? "Птица" :
-    p.species === "snake" ? "Змея" :
-    p.species === "reptile" ? "Рептилия" :
-    p.species === "spider" ? "Паук" :
-    "Питомец";
-
-  return (
-    <option key={p.id} value={p.id}>
-      {p.name} — {speciesLabel}
-      {p.conditions ? ` (${p.conditions})` : ""}
-    </option>
-  );
-})}
-            </select>
-          </label>
-
-          <button style={{ marginLeft: 10 }} onClick={clearPetFilter}>
-            Очистить фильтр
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-          <label>
-            Вид животного:
-            <select
-              value={species}
-              onChange={(e) => setSpecies(e.target.value)}
-              style={{ marginLeft: 8, width: 220 }}
-            >
-              {SPECIES_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Условия:
-            <select
-              value={conditionsKey}
-              onChange={(e) => setConditionsKey(e.target.value)}
-              style={{ marginLeft: 8, width: 260 }}
-            >
-              {CONDITIONS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <input
-            placeholder="Темп. мин"
-            type="number"
-            value={tMin}
-            onChange={(e) => setTMin(e.target.value === "" ? "" : Number(e.target.value))}
-            style={{ width: 120 }}
-          />
-          <input
-            placeholder="Темп. макс"
-            type="number"
-            value={tMax}
-            onChange={(e) => setTMax(e.target.value === "" ? "" : Number(e.target.value))}
-            style={{ width: 120 }}
-          />
-
-          <input
-            placeholder="Влажн. мин"
-            type="number"
-            value={hMin}
-            onChange={(e) => setHMin(e.target.value === "" ? "" : Number(e.target.value))}
-            style={{ width: 120 }}
-          />
-          <input
-            placeholder="Влажн. макс"
-            type="number"
-            value={hMax}
-            onChange={(e) => setHMax(e.target.value === "" ? "" : Number(e.target.value))}
-            style={{ width: 120 }}
-          />
-
-          <input
-            placeholder="Прививки (через запятую)"
-            value={vaccinationsText}
-            onChange={(e) => setVaccinationsText(e.target.value)}
-            style={{ width: 260 }}
-          />
-
-          <input
-            placeholder="Диета (тип)"
-            value={dietType}
-            onChange={(e) => setDietType(e.target.value)}
-            style={{ width: 180 }}
-          />
-
-          <input
-            placeholder="Особенности питания"
-            value={dietDetails}
-            onChange={(e) => setDietDetails(e.target.value)}
-            style={{ width: 220 }}
-          />
-
-          <input
-            placeholder="Кормлений/день"
-            type="number"
-            value={feedings}
-            onChange={(e) =>
-              setFeedings(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            style={{ width: 160 }}
-          />
-
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            Лицензия:
-            <select
-              value={licenseRequired === "" ? "" : licenseRequired ? "true" : "false"}
-              onChange={(e) =>
-                setLicenseRequired(e.target.value === "" ? "" : e.target.value === "true")
-              }
-            >
-              <option value="">—</option>
-              <option value="false">Не нужна</option>
-              <option value="true">Нужна</option>
-            </select>
-          </label>
-
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            Совместно:
-            <select
-              value={cohabAllowed === "" ? "" : cohabAllowed ? "true" : "false"}
-              onChange={(e) =>
-                setCohabAllowed(e.target.value === "" ? "" : e.target.value === "true")
-              }
-            >
-              <option value="">—</option>
-              <option value="true">Можно</option>
-              <option value="false">Нельзя</option>
-            </select>
-          </label>
-        </div>
-
-        <div style={{ marginTop: 8, color: "gray", fontSize: 12 }}>
-          Фильтр применяется при нажатии кнопок <b>“Найти по городу”</b> / <b>“Найти по названию”</b>.
-        </div>
-      </div>
-
-      {message && <p style={{ color: "gray" }}>{message}</p>}
-
-      {/* Добавление отеля — только админ */}
-      {isAdmin && (
-        <div
-          style={{ border: "1px solid #ccc", padding: 12, marginBottom: 20 }}
-        >
-          <h3>Добавить отель (только администратор)</h3>
-          <div>
-            <input
-  placeholder="Название"
-  value={newTitle}
-  onChange={(e) => setNewTitle(e.target.value)}
-  style={{ marginRight: 8 }}
-/>
-
-<input
-  placeholder="Город"
-  value={newLocation}
-  onChange={(e) => setNewLocation(e.target.value)}
-  style={{ marginRight: 8 }}
-/>
-
-<input
-  placeholder="Ссылка на картинку (URL)"
-  value={newImageUrl}
-  onChange={(e) => setNewImageUrl(e.target.value)}
-  style={{ marginRight: 8, width: 260 }}
-/>
-
-<button onClick={handleCreateHotel}>Добавить</button>
+    <div className="hotels-page">
+      <div className="hotels-page__layout">
+        {/* ЛЕВАЯ РЕКЛАМА */}
+        <aside className="hotels-page__sidebar">
+          <div className="hotels-page__sidebar-sticky">
+            <AdBanner />
+            <AdBanner />
           </div>
-        </div>
-      )}
+        </aside>
 
-      {hotels.length > 0 && (
-        <ul>
-          {hotels.map((h) => (
-            <li key={h.id} style={{ marginBottom: 10 }}>
-              {editingId === h.id ? (
-                <div>
+        {/* ОСНОВНОЙ КОНТЕНТ */}
+        <main className="hotels-page__content">
+          <section className="hotels-card hotels-hero">
+            <div className="hotels-hero__top">
+              <div>
+                <h1 className="hotels-hero__title">Отели</h1>
+                <p className="hotels-hero__subtitle">
+                  Поиск, фильтрация и управление отелями для питомцев
+                </p>
+              </div>
+
+              <div className="hotels-hero__actions">
+                <button
+                  type="button"
+                  className="hotels-btn hotels-btn--ghost"
+                  onClick={() => navigate("/login")}
+                >
+                  {isLogged ? "Профиль / вход" : "Войти"}
+                </button>
+
+                <button
+                  type="button"
+                  className="hotels-btn hotels-btn--secondary"
+                  onClick={() => navigate("/pets")}
+                >
+                  Мои питомцы
+                </button>
+
+                <button
+                  type="button"
+                  className="hotels-btn hotels-btn--primary"
+                  onClick={() => navigate("/bookings")}
+                >
+                  Мои бронирования
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="hotels-card">
+            <h2 className="hotels-section-title">Поиск отелей</h2>
+
+            <div className="hotels-search-grid">
+              <div className="hotels-field">
+                <label className="hotels-label">Город</label>
+                <div className="hotels-inline-action">
                   <input
-  value={editTitle}
-  onChange={(e) => setEditTitle(e.target.value)}
-  style={{ marginRight: 8 }}
-/>
-
-<input
-  value={editLocation}
-  onChange={(e) => setEditLocation(e.target.value)}
-  style={{ marginRight: 8 }}
-/>
-
-<input
-  placeholder="Ссылка на картинку (URL)"
-  value={editImageUrl}
-  onChange={(e) => setEditImageUrl(e.target.value)}
-  style={{ marginRight: 8, width: 260 }}
-/>
-
-<button onClick={saveEdit} style={{ marginRight: 4 }}>
-  Сохранить
-</button>
-<button onClick={cancelEdit}>Отмена</button>
+                    className="hotels-input"
+                    placeholder="Город (Москва, Moscow, MOW...)"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="hotels-btn hotels-btn--primary"
+                    onClick={searchByCity}
+                  >
+                    Найти по городу
+                  </button>
                 </div>
-              ) : (
-                <div>
-                  <Link
-  to={`/hotels/${h.id}`}
-  style={{ display: "flex", gap: 12, alignItems: "center", textDecoration: "none" }}
->
-  {h.images?.[0] ? (
-    <img
-      src={h.images[0]}
-      alt={h.title}
-      style={{ width: 90, height: 65, objectFit: "cover", borderRadius: 10 }}
-    />
-  ) : (
-    <div style={{ width: 90, height: 65, borderRadius: 10, background: "#eee" }} />
-  )}
+              </div>
 
-  <div>
-    <div style={{ fontWeight: 600, color: "#111" }}>{h.title}</div>
-    <div style={{ color: "gray" }}>{h.location}</div>
-  </div>
-</Link>
-                  {isAdmin && (
-                    <>
-                      <button
-                        style={{ marginLeft: 10 }}
-                        onClick={() => startEdit(h)}
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        style={{ marginLeft: 10 }}
-                        onClick={() => handleDeleteHotel(h.id)}
-                      >
-                        Удалить
-                      </button>
-                    </>
+              <div className="hotels-field">
+                <label className="hotels-label">Название отеля</label>
+                <div className="hotels-inline-action">
+                  <input
+                    className="hotels-input"
+                    placeholder="Название отеля"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="hotels-btn hotels-btn--secondary"
+                    onClick={searchByTitle}
+                  >
+                    Найти по названию
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="hotels-card">
+            <div className="hotels-section-head">
+              <h2 className="hotels-section-title">Фильтр по требованиям питомца</h2>
+              <button
+                type="button"
+                className="hotels-btn hotels-btn--ghost"
+                onClick={clearPetFilter}
+              >
+                Очистить фильтр
+              </button>
+            </div>
+
+            <div className="hotels-filter-grid">
+              <div className="hotels-field hotels-field--wide">
+                <label className="hotels-label">Питомец</label>
+                <select
+                  className="hotels-select"
+                  value={selectedPetId}
+                  onChange={(e) =>
+                    setSelectedPetId(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                >
+                  <option value="">— не выбран (ввод вручную) —</option>
+                  {pets.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {getSpeciesLabel(p.species)}
+                      {p.conditions ? ` (${p.conditions})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Вид животного</label>
+                <select
+                  className="hotels-select"
+                  value={species}
+                  onChange={(e) => setSpecies(e.target.value)}
+                >
+                  {SPECIES_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Условия</label>
+                <select
+                  className="hotels-select"
+                  value={conditionsKey}
+                  onChange={(e) => setConditionsKey(e.target.value)}
+                >
+                  {CONDITIONS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Темп. мин</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Темп. мин"
+                  type="number"
+                  value={tMin}
+                  onChange={(e) => setTMin(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Темп. макс</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Темп. макс"
+                  type="number"
+                  value={tMax}
+                  onChange={(e) => setTMax(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Влажн. мин</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Влажн. мин"
+                  type="number"
+                  value={hMin}
+                  onChange={(e) => setHMin(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Влажн. макс</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Влажн. макс"
+                  type="number"
+                  value={hMax}
+                  onChange={(e) => setHMax(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotels-field hotels-field--wide">
+                <label className="hotels-label">Прививки (через запятую)</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Например: rabies, complex"
+                  value={vaccinationsText}
+                  onChange={(e) => setVaccinationsText(e.target.value)}
+                />
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Диета (тип)</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Диета (тип)"
+                  value={dietType}
+                  onChange={(e) => setDietType(e.target.value)}
+                />
+              </div>
+
+              <div className="hotels-field hotels-field--wide">
+                <label className="hotels-label">Особенности питания</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Особенности питания"
+                  value={dietDetails}
+                  onChange={(e) => setDietDetails(e.target.value)}
+                />
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Кормлений/день</label>
+                <input
+                  className="hotels-input"
+                  placeholder="Кормлений/день"
+                  type="number"
+                  value={feedings}
+                  onChange={(e) =>
+                    setFeedings(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                />
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Лицензия</label>
+                <select
+                  className="hotels-select"
+                  value={licenseRequired === "" ? "" : licenseRequired ? "true" : "false"}
+                  onChange={(e) =>
+                    setLicenseRequired(e.target.value === "" ? "" : e.target.value === "true")
+                  }
+                >
+                  <option value="">—</option>
+                  <option value="false">Не нужна</option>
+                  <option value="true">Нужна</option>
+                </select>
+              </div>
+
+              <div className="hotels-field">
+                <label className="hotels-label">Совместно</label>
+                <select
+                  className="hotels-select"
+                  value={cohabAllowed === "" ? "" : cohabAllowed ? "true" : "false"}
+                  onChange={(e) =>
+                    setCohabAllowed(e.target.value === "" ? "" : e.target.value === "true")
+                  }
+                >
+                  <option value="">—</option>
+                  <option value="true">Можно</option>
+                  <option value="false">Нельзя</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="hotels-note">
+              Фильтр применяется при нажатии кнопок <b>«Найти по городу»</b> /{" "}
+              <b>«Найти по названию»</b>.
+            </div>
+          </section>
+
+          {message && <div className="hotels-message">{message}</div>}
+
+          {isAdmin && (
+            <section className="hotels-card">
+              <h2 className="hotels-section-title">
+                Добавить отель (только администратор)
+              </h2>
+
+              <div className="hotels-admin-grid">
+                <div className="hotels-field">
+                  <label className="hotels-label">Название</label>
+                  <input
+                    className="hotels-input"
+                    placeholder="Название"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                </div>
+
+                <div className="hotels-field">
+                  <label className="hotels-label">Город</label>
+                  <input
+                    className="hotels-input"
+                    placeholder="Город"
+                    value={newLocation}
+                    onChange={(e) => setNewLocation(e.target.value)}
+                  />
+                </div>
+
+                <div className="hotels-field hotels-field--wide">
+                  <label className="hotels-label">Ссылка на картинку (URL)</label>
+                  <input
+                    className="hotels-input"
+                    placeholder="Ссылка на картинку (URL)"
+                    value={newImageUrl}
+                    onChange={(e) => setNewImageUrl(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="hotels-actions-row">
+                <button
+                  type="button"
+                  className="hotels-btn hotels-btn--primary"
+                  onClick={handleCreateHotel}
+                >
+                  Добавить
+                </button>
+              </div>
+            </section>
+          )}
+
+          {hotels.length > 0 && (
+            <section className="hotels-list">
+              {hotels.map((h) => (
+                <article key={h.id} className="hotels-item-card">
+                  {editingId === h.id ? (
+                    <div className="hotels-edit-grid">
+                      <div className="hotels-field">
+                        <label className="hotels-label">Название</label>
+                        <input
+                          className="hotels-input"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="hotels-field">
+                        <label className="hotels-label">Город</label>
+                        <input
+                          className="hotels-input"
+                          value={editLocation}
+                          onChange={(e) => setEditLocation(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="hotels-field hotels-field--wide">
+                        <label className="hotels-label">Ссылка на картинку (URL)</label>
+                        <input
+                          className="hotels-input"
+                          placeholder="Ссылка на картинку (URL)"
+                          value={editImageUrl}
+                          onChange={(e) => setEditImageUrl(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="hotels-actions-row">
+                        <button
+                          type="button"
+                          className="hotels-btn hotels-btn--primary"
+                          onClick={saveEdit}
+                        >
+                          Сохранить
+                        </button>
+                        <button
+                          type="button"
+                          className="hotels-btn hotels-btn--ghost"
+                          onClick={cancelEdit}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="hotels-item-card__content">
+                      <Link to={`/hotels/${h.id}`} className="hotels-item-card__link">
+                        {h.images?.[0] ? (
+                          <img
+                            src={h.images[0]}
+                            alt={h.title}
+                            className="hotels-item-card__image"
+                          />
+                        ) : (
+                          <div className="hotels-item-card__image hotels-item-card__image--empty" />
+                        )}
+
+                        <div className="hotels-item-card__info">
+                          <div className="hotels-item-card__title">{h.title}</div>
+                          <div className="hotels-item-card__location">{h.location}</div>
+                        </div>
+                      </Link>
+
+                      {isAdmin && (
+                        <div className="hotels-item-card__admin-actions">
+                          <button
+                            type="button"
+                            className="hotels-btn hotels-btn--secondary"
+                            onClick={() => startEdit(h)}
+                          >
+                            Изменить
+                          </button>
+                          <button
+                            type="button"
+                            className="hotels-btn hotels-btn--danger"
+                            onClick={() => handleDeleteHotel(h.id)}
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-    {/* ПРАВАЯ РЕКЛАМА */}
-      <div>
-      <div style={{ marginTop:300 }} >
-        <AdBanner />
-        <div style={{ height:16 }} />
-        <AdBanner />
-        </div>
+                </article>
+              ))}
+            </section>
+          )}
+        </main>
+
+        {/* ПРАВАЯ РЕКЛАМА */}
+        <aside className="hotels-page__sidebar">
+          <div className="hotels-page__sidebar-sticky">
+            <AdBanner />
+            <AdBanner />
+          </div>
+        </aside>
       </div>
     </div>
-  </div>
   );
 }

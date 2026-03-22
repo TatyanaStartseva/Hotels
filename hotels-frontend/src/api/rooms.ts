@@ -1,4 +1,3 @@
-// src/api/rooms.ts
 import { api } from "./client";
 
 export type Room = {
@@ -56,6 +55,14 @@ export type RoomCreate = {
 export type RoomPatch = Partial<RoomCreate>;
 
 export async function getRooms(
+  hotelId: number,
+  params?: { date_from?: string; date_to?: string }
+) {
+  const res = await api.get<Room[]>(`/rooms/${hotelId}/rooms`, { params });
+  return res.data;
+}
+
+export async function getRoomsByHotel(
   hotelId: number,
   params?: { date_from?: string; date_to?: string }
 ) {

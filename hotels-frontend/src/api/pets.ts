@@ -47,13 +47,15 @@ export type PetCreate = {
   diet_details?: string | null;
   feedings_per_day?: number | null;
 
-  license_required?: boolean;
+  license_required?: boolean | null;
   license_number?: string | null;
 
-  cohabitation_allowed?: boolean;
+  cohabitation_allowed?: boolean | null;
   cohabitation_notes?: string | null;
   compatible_species?: string[] | null;
 };
+
+export type PetUpdate = Partial<PetCreate>;
 
 export async function getMyPets() {
   const res = await api.get<Pet[]>("/pets/me");
@@ -62,6 +64,11 @@ export async function getMyPets() {
 
 export async function createPet(payload: PetCreate) {
   const res = await api.post("/pets", payload);
+  return res.data;
+}
+
+export async function updatePet(petId: number, payload: PetUpdate) {
+  const res = await api.patch(`/pets/${petId}`, payload);
   return res.data;
 }
 

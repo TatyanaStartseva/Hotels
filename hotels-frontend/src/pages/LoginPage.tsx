@@ -1,75 +1,96 @@
-// src/pages/LoginPage.tsx
-import { useState, useContext } from "react";
+import "./LoginPage.css";
+
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, register } from "../api/auth";
-import { AuthContext } from "../contexts/AuthContext";
+import { loginUser } from "../api/auth";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"login" | "register">("login");
   const navigate = useNavigate();
 
-  const { refreshAuth } = useContext(AuthContext);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async () => {
+    setMessage(null);
+    setError(null);
+
+    if (!email.trim() || !password.trim()) {
+      setError("Введите email и пароль");
+      return;
+    }
 
     try {
-      if (mode === "login") {
-        await login({ email, password });
-      } else {
-        await register({ email, password });
-      }
+      await loginUser({
+        email: email.trim(),
+        password,
+      });
 
-      // обновляем контекст, чтобы isAdmin / isLogged стали актуальными
-      await refreshAuth();
-
-      // и только потом переходим на главную
-      navigate("/");
-    } catch (e: any) {
-      alert("Ошибка авторизации");
+      setMessage("Вход выполнен успешно");
+      navigate("/hotels");
+    } catch (e) {
       console.error(e);
+      setError("Ошибка входа. Проверьте email и пароль.");
     }
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "40px auto" }}>
-      <h1>{mode === "login" ? "Вход" : "Регистрация"}</h1>
+    <div className="login-page">
+      <div className="login-card">
+        <h1 className="login-title">Вход</h1>
+        <p className="login-subtitle">
+          Войдите в аккаунт, чтобы управлять отелями, питомцами и бронированиями
+        </p>
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 10 }}>
+        {message && <div className="login-message">{message}</div>}
+        {error && <div className="login-error">{error}</div>}
+
+        <div className="login-field">
+          <label className="login-label">Email</label>
           <input
-            placeholder="Email"
+            className="login-input"
             type="email"
+            placeholder="Введите email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={{ width: "100%" }}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <div style={{ marginBottom: 10 }}>
+
+        <div className="login-field">
+          <label className="login-label">Пароль</label>
           <input
-            placeholder="Пароль"
+            className="login-input"
             type="password"
+            placeholder="Введите пароль"
             value={password}
-            onChange={e => setPassword(e.target.value)}
-            style={{ width: "100%" }}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleLogin();
+              }
+            }}
           />
         </div>
 
-        <button type="submit" style={{ marginRight: 10 }}>
-          {mode === "login" ? "Войти" : "Зарегистрироваться"}
-        </button>
+        <div className="login-actions">
+          <button
+            type="button"
+            className="login-btn login-btn--primary"
+            onClick={handleLogin}
+          >
+            Войти
+          </button>
 
-        <button
-          type="button"
-          onClick={() =>
-            setMode(prev => (prev === "login" ? "register" : "login"))
-          }
-        >
-          {mode === "login" ? "Перейти к регистрации" : "Перейти ко входу"}
-        </button>
-      </form>
+          <button
+            type="button"
+            className="login-btn login-btn--secondary"
+            onClick={() => navigate("/hotels")}
+          >
+            К отелям
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

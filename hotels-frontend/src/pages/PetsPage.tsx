@@ -1,384 +1,832 @@
+import "./PetsPage.css";
+
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getMyPets, createPet, deletePet, type Pet } from "../api/pets";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  getMyPets,
+  createPet,
+  updatePet,
+  deletePet,
+  type Pet,
+} from "../api/pets";
+
+type SpeciesOption = { label: string; value: string };
+
+const SPECIES_OPTIONS: SpeciesOption[] = [
+  { label: "Кошка", value: "cat" },
+  { label: "Собака", value: "dog" },
+  { label: "Кролик", value: "rabbit" },
+  { label: "Грызун", value: "rodent" },
+  { label: "Птица", value: "bird" },
+  { label: "Змея", value: "snake" },
+  { label: "Рептилия", value: "reptile" },
+  { label: "Паук", value: "spider" },
+];
+
+function getSpeciesLabel(species?: string) {
+  switch (species) {
+    case "cat":
+      return "Кошка";
+    case "dog":
+      return "Собака";
+    case "rabbit":
+      return "Кролик";
+    case "rodent":
+      return "Грызун";
+    case "bird":
+      return "Птица";
+    case "snake":
+      return "Змея";
+    case "reptile":
+      return "Рептилия";
+    case "spider":
+      return "Паук";
+    default:
+      return "Не указано";
+  }
+}
+
+function boolText(value?: boolean | null) {
+  if (value === true) return "Да";
+  if (value === false) return "Нет";
+  return "Не указано";
+}
+
+function formatVaccinations(vaccinations?: any[]) {
+  if (!vaccinations || vaccinations.length === 0) return "Не указано";
+
+  if (typeof vaccinations[0] === "string") {
+    return vaccinations.join(", ");
+  }
+
+  return vaccinations
+    .map((item) => item?.name || "")
+    .filter(Boolean)
+    .join(", ");
+}
 
 export default function PetsPage() {
   const navigate = useNavigate();
 
   const [pets, setPets] = useState<Pet[]>([]);
+  const [message, setMessage] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [species, setSpecies] = useState("cat");
+  const [conditions, setConditions] = useState("");
 
   const [temperatureMin, setTemperatureMin] = useState<number | "">("");
   const [temperatureMax, setTemperatureMax] = useState<number | "">("");
   const [humidityMin, setHumidityMin] = useState<number | "">("");
   const [humidityMax, setHumidityMax] = useState<number | "">("");
 
-  const [conditions, setConditions] = useState("");
-  const [vaccinationsText, setVaccinationsText] = useState("");
-  const [chipId, setChipId] = useState("");
-
   const [dietType, setDietType] = useState("");
   const [dietDetails, setDietDetails] = useState("");
   const [feedingsPerDay, setFeedingsPerDay] = useState<number | "">("");
 
-  const [licenseRequired, setLicenseRequired] = useState(false);
-  const [licenseNumber, setLicenseNumber] = useState("");
+  const [vaccinationsText, setVaccinationsText] = useState("");
+  const [licenseRequired, setLicenseRequired] = useState<boolean | "">("");
+  const [cohabitationAllowed, setCohabitationAllowed] = useState<boolean | "">("");
 
-  const [cohabitationAllowed, setCohabitationAllowed] = useState(true);
-  const [cohabitationNotes, setCohabitationNotes] = useState("");
-  const [compatibleSpeciesText, setCompatibleSpeciesText] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
 
-  const loadPets = async () => {
-    try {
-      const data = await getMyPets();
-      setPets(data);
-    } catch (e) {
-      console.error("loadPets failed:", e);
-      setPets([]);
-    }
-  };
+  const [editName, setEditName] = useState("");
+  const [editSpecies, setEditSpecies] = useState("cat");
+  const [editConditions, setEditConditions] = useState("");
+
+  const [editTemperatureMin, setEditTemperatureMin] = useState<number | "">("");
+  const [editTemperatureMax, setEditTemperatureMax] = useState<number | "">("");
+  const [editHumidityMin, setEditHumidityMin] = useState<number | "">("");
+  const [editHumidityMax, setEditHumidityMax] = useState<number | "">("");
+
+  const [editDietType, setEditDietType] = useState("");
+  const [editDietDetails, setEditDietDetails] = useState("");
+  const [editFeedingsPerDay, setEditFeedingsPerDay] = useState<number | "">("");
+
+  const [editVaccinationsText, setEditVaccinationsText] = useState("");
+  const [editLicenseRequired, setEditLicenseRequired] = useState<boolean | "">("");
+  const [editCohabitationAllowed, setEditCohabitationAllowed] = useState<boolean | "">("");
 
   useEffect(() => {
     loadPets();
   }, []);
 
-  const handleCreatePet = async () => {
+  const loadPets = async () => {
+    setMessage(null);
+    try {
+      const data = await getMyPets();
+      setPets(data);
+
+      if (!data.length) {
+        setMessage("У вас пока нет добавленных питомцев.");
+      }
+    } catch (e) {
+      console.error(e);
+      setMessage("Ошибка при загрузке питомцев.");
+    }
+  };
+
+  const clearCreateForm = () => {
+    setName("");
+    setSpecies("cat");
+    setConditions("");
+    setTemperatureMin("");
+    setTemperatureMax("");
+    setHumidityMin("");
+    setHumidityMax("");
+    setDietType("");
+    setDietDetails("");
+    setFeedingsPerDay("");
+    setVaccinationsText("");
+    setLicenseRequired("");
+    setCohabitationAllowed("");
+  };
+
+  const handleCreate = async () => {
     if (!name.trim()) {
       alert("Введите имя питомца");
       return;
     }
 
-    const vaccinations = vaccinationsText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const compatibleSpecies = compatibleSpeciesText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
     try {
+      const vaccinations = vaccinationsText
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+
       await createPet({
         name: name.trim(),
         species,
+        conditions: conditions.trim() || null,
         temperature_min: temperatureMin === "" ? null : Number(temperatureMin),
         temperature_max: temperatureMax === "" ? null : Number(temperatureMax),
         humidity_min: humidityMin === "" ? null : Number(humidityMin),
         humidity_max: humidityMax === "" ? null : Number(humidityMax),
-        conditions: conditions.trim() || null,
-        vaccinations: vaccinations.length ? vaccinations : null,
-        chip_id: chipId.trim() || null,
         diet_type: dietType.trim() || null,
         diet_details: dietDetails.trim() || null,
         feedings_per_day: feedingsPerDay === "" ? null : Number(feedingsPerDay),
-        license_required: licenseRequired,
-        license_number: licenseNumber.trim() || null,
-        cohabitation_allowed: cohabitationAllowed,
-        cohabitation_notes: cohabitationNotes.trim() || null,
-        compatible_species: compatibleSpecies.length ? compatibleSpecies : null,
+        vaccinations,
+        license_required: licenseRequired === "" ? null : licenseRequired,
+        cohabitation_allowed:
+          cohabitationAllowed === "" ? null : cohabitationAllowed,
       });
 
-      setName("");
-      setSpecies("cat");
-      setTemperatureMin("");
-      setTemperatureMax("");
-      setHumidityMin("");
-      setHumidityMax("");
-      setConditions("");
-      setVaccinationsText("");
-      setChipId("");
-      setDietType("");
-      setDietDetails("");
-      setFeedingsPerDay("");
-      setLicenseRequired(false);
-      setLicenseNumber("");
-      setCohabitationAllowed(true);
-      setCohabitationNotes("");
-      setCompatibleSpeciesText("");
-
+      clearCreateForm();
       await loadPets();
-      alert("Питомец добавлен");
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      alert(e?.response?.data?.detail ?? e?.message ?? "Ошибка при добавлении питомца");
+      alert("Ошибка при создании питомца");
     }
   };
 
-  const handleDeletePet = async (petId: number) => {
+  const handleDelete = async (id: number) => {
     if (!confirm("Удалить питомца?")) return;
 
     try {
-      await deletePet(petId);
+      await deletePet(id);
       await loadPets();
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
-      alert(e?.response?.data?.detail ?? e?.message ?? "Ошибка при удалении питомца");
+      alert("Ошибка при удалении питомца");
     }
   };
 
-  const speciesLabel = (value: string) => {
-    switch (value) {
-      case "cat":
-        return "Кошка";
-      case "dog":
-        return "Собака";
-      case "rabbit":
-        return "Кролик";
-      case "rodent":
-        return "Грызун";
-      case "bird":
-        return "Птица";
-      case "snake":
-        return "Змея";
-      case "reptile":
-        return "Рептилия";
-      case "spider":
-        return "Паук";
-      default:
-        return value;
+  const startEdit = (pet: Pet) => {
+    setEditingId(pet.id);
+
+    setEditName(pet.name || "");
+    setEditSpecies((pet as any).species || "cat");
+    setEditConditions((pet as any).conditions || "");
+
+    setEditTemperatureMin((pet as any).temperature_min ?? "");
+    setEditTemperatureMax((pet as any).temperature_max ?? "");
+    setEditHumidityMin((pet as any).humidity_min ?? "");
+    setEditHumidityMax((pet as any).humidity_max ?? "");
+
+    setEditDietType((pet as any).diet_type || "");
+    setEditDietDetails((pet as any).diet_details || "");
+    setEditFeedingsPerDay((pet as any).feedings_per_day ?? "");
+
+    const vaccinations = (pet as any).vaccinations || [];
+    if (vaccinations.length && typeof vaccinations[0] === "string") {
+      setEditVaccinationsText(vaccinations.join(", "));
+    } else {
+      setEditVaccinationsText(
+        vaccinations
+          .map((item: any) => item?.name || "")
+          .filter(Boolean)
+          .join(", ")
+      );
+    }
+
+    setEditLicenseRequired((pet as any).license_required ?? "");
+    setEditCohabitationAllowed((pet as any).cohabitation_allowed ?? "");
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+
+    setEditName("");
+    setEditSpecies("cat");
+    setEditConditions("");
+
+    setEditTemperatureMin("");
+    setEditTemperatureMax("");
+    setEditHumidityMin("");
+    setEditHumidityMax("");
+
+    setEditDietType("");
+    setEditDietDetails("");
+    setEditFeedingsPerDay("");
+
+    setEditVaccinationsText("");
+    setEditLicenseRequired("");
+    setEditCohabitationAllowed("");
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+
+    try {
+      const vaccinations = editVaccinationsText
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+      await updatePet(editingId, {
+        name: editName.trim(),
+        species: editSpecies,
+        conditions: editConditions.trim() || null,
+        temperature_min:
+          editTemperatureMin === "" ? null : Number(editTemperatureMin),
+        temperature_max:
+          editTemperatureMax === "" ? null : Number(editTemperatureMax),
+        humidity_min: editHumidityMin === "" ? null : Number(editHumidityMin),
+        humidity_max: editHumidityMax === "" ? null : Number(editHumidityMax),
+        diet_type: editDietType.trim() || null,
+        diet_details: editDietDetails.trim() || null,
+        feedings_per_day:
+          editFeedingsPerDay === "" ? null : Number(editFeedingsPerDay),
+        vaccinations,
+        license_required:
+          editLicenseRequired === "" ? null : editLicenseRequired,
+        cohabitation_allowed:
+          editCohabitationAllowed === "" ? null : editCohabitationAllowed,
+      });
+
+      cancelEdit();
+      await loadPets();
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при обновлении питомца");
     }
   };
 
   return (
-    <div style={{ maxWidth: 1000, margin: "40px auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h1>Мои питомцы</h1>
-        <button onClick={() => navigate("/")}>Назад к отелям</button>
-      </div>
+    <div className="pets-page">
+      <div className="pets-page__container">
+        <section className="pets-card pets-hero">
+          <div className="pets-hero__top">
+            <div>
+              <h1 className="pets-hero__title">Мои питомцы</h1>
+              <p className="pets-hero__subtitle">
+                Добавляйте питомцев и управляйте их условиями содержания
+              </p>
+            </div>
 
-      <div style={{ border: "1px solid #ccc", padding: 16, marginBottom: 24 }}>
-        <h2 style={{ marginTop: 0 }}>Добавить питомца</h2>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <input
-            placeholder="Имя питомца"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={{ width: 220 }}
-          />
-
-          <select
-            value={species}
-            onChange={(e) => setSpecies(e.target.value)}
-            style={{ width: 180 }}
-          >
-            <option value="cat">Кошка</option>
-            <option value="dog">Собака</option>
-            <option value="rabbit">Кролик</option>
-            <option value="rodent">Грызун</option>
-            <option value="bird">Птица</option>
-            <option value="snake">Змея</option>
-            <option value="reptile">Рептилия</option>
-            <option value="spider">Паук</option>
-          </select>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          <input
-            placeholder="Темп. мин"
-            type="number"
-            value={temperatureMin}
-            onChange={(e) =>
-              setTemperatureMin(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            style={{ width: 140 }}
-          />
-          <input
-            placeholder="Темп. макс"
-            type="number"
-            value={temperatureMax}
-            onChange={(e) =>
-              setTemperatureMax(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            style={{ width: 140 }}
-          />
-
-          <input
-            placeholder="Влажн. мин"
-            type="number"
-            value={humidityMin}
-            onChange={(e) =>
-              setHumidityMin(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            style={{ width: 140 }}
-          />
-          <input
-            placeholder="Влажн. макс"
-            type="number"
-            value={humidityMax}
-            onChange={(e) =>
-              setHumidityMax(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            style={{ width: 140 }}
-          />
-        </div>
-
-        <div style={{ marginTop: 10 }}>
-          <input
-            placeholder="Условия содержания"
-            value={conditions}
-            onChange={(e) => setConditions(e.target.value)}
-            style={{ width: "100%" }}
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          <input
-            placeholder="Прививки (через запятую)"
-            value={vaccinationsText}
-            onChange={(e) => setVaccinationsText(e.target.value)}
-            style={{ width: 280 }}
-          />
-
-          <input
-            placeholder="ID чипа"
-            value={chipId}
-            onChange={(e) => setChipId(e.target.value)}
-            style={{ width: 220 }}
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          <input
-            placeholder="Диета (тип)"
-            value={dietType}
-            onChange={(e) => setDietType(e.target.value)}
-            style={{ width: 200 }}
-          />
-
-          <input
-            placeholder="Особенности питания"
-            value={dietDetails}
-            onChange={(e) => setDietDetails(e.target.value)}
-            style={{ width: 280 }}
-          />
-
-          <input
-            placeholder="Кормлений/день"
-            type="number"
-            value={feedingsPerDay}
-            onChange={(e) =>
-              setFeedingsPerDay(e.target.value === "" ? "" : Number(e.target.value))
-            }
-            style={{ width: 180 }}
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
-          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            Нужна лицензия:
-            <input
-              type="checkbox"
-              checked={licenseRequired}
-              onChange={(e) => setLicenseRequired(e.target.checked)}
-            />
-          </label>
-
-          <input
-            placeholder="Номер лицензии"
-            value={licenseNumber}
-            onChange={(e) => setLicenseNumber(e.target.value)}
-            style={{ width: 220 }}
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
-          <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            Можно совместно содержать:
-            <input
-              type="checkbox"
-              checked={cohabitationAllowed}
-              onChange={(e) => setCohabitationAllowed(e.target.checked)}
-            />
-          </label>
-
-          <input
-            placeholder="Заметки по совместному содержанию"
-            value={cohabitationNotes}
-            onChange={(e) => setCohabitationNotes(e.target.value)}
-            style={{ width: 320 }}
-          />
-        </div>
-
-        <div style={{ marginTop: 10 }}>
-          <input
-            placeholder="Совместимые виды (через запятую)"
-            value={compatibleSpeciesText}
-            onChange={(e) => setCompatibleSpeciesText(e.target.value)}
-            style={{ width: "100%" }}
-          />
-        </div>
-
-        <button onClick={handleCreatePet} style={{ marginTop: 16 }}>
-          Добавить питомца
-        </button>
-      </div>
-
-      <h2>Сохранённые питомцы</h2>
-
-      {pets.length === 0 ? (
-        <p style={{ color: "gray" }}>Питомцев пока нет.</p>
-      ) : (
-        <ul style={{ paddingLeft: 18 }}>
-          {pets.map((p) => (
-            <li key={p.id} style={{ marginBottom: 16 }}>
-              <div>
-                <b>{p.name}</b> — {speciesLabel(p.species)}
-              </div>
-
-              {p.conditions && (
-                <div>
-                  <span style={{ color: "gray" }}>Условия:</span> {p.conditions}
-                </div>
-              )}
-
-              {(p.temperature_min != null || p.temperature_max != null) && (
-                <div>
-                  <span style={{ color: "gray" }}>Температура:</span>{" "}
-                  {p.temperature_min ?? "—"} — {p.temperature_max ?? "—"} °C
-                </div>
-              )}
-
-              {(p.humidity_min != null || p.humidity_max != null) && (
-                <div>
-                  <span style={{ color: "gray" }}>Влажность:</span>{" "}
-                  {p.humidity_min ?? "—"} — {p.humidity_max ?? "—"} %
-                </div>
-              )}
-
-              {p.vaccinations && p.vaccinations.length > 0 && (
-                <div>
-                  <span style={{ color: "gray" }}>Прививки:</span>{" "}
-                  {p.vaccinations.join(", ")}
-                </div>
-              )}
-
-              {p.diet_type && (
-                <div>
-                  <span style={{ color: "gray" }}>Диета:</span> {p.diet_type}
-                </div>
-              )}
-
-              {p.feedings_per_day != null && (
-                <div>
-                  <span style={{ color: "gray" }}>Кормлений в день:</span>{" "}
-                  {p.feedings_per_day}
-                </div>
-              )}
+            <div className="pets-actions">
+              <button
+                type="button"
+                className="pets-btn pets-btn--ghost"
+                onClick={() => navigate("/hotels")}
+              >
+                К отелям
+              </button>
 
               <button
-                style={{ marginTop: 8 }}
-                onClick={() => handleDeletePet(p.id)}
+                type="button"
+                className="pets-btn pets-btn--secondary"
+                onClick={() => navigate("/bookings")}
               >
-                Удалить
+                Мои бронирования
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
+
+              <button
+                type="button"
+                className="pets-btn pets-btn--primary"
+                onClick={loadPets}
+              >
+                Обновить список
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="pets-card">
+          <h2 className="pets-section-title">Добавить питомца</h2>
+
+          <div className="pets-form-grid">
+            <div className="pets-field">
+              <label className="pets-label">Имя</label>
+              <input
+                className="pets-input"
+                placeholder="Имя питомца"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Вид</label>
+              <select
+                className="pets-select"
+                value={species}
+                onChange={(e) => setSpecies(e.target.value)}
+              >
+                {SPECIES_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="pets-field pets-field--wide">
+              <label className="pets-label">Особые условия</label>
+              <textarea
+                className="pets-textarea"
+                placeholder="Например: нужен террариум, подогрев, тишина..."
+                value={conditions}
+                onChange={(e) => setConditions(e.target.value)}
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Температура мин</label>
+              <input
+                className="pets-input"
+                type="number"
+                value={temperatureMin}
+                onChange={(e) =>
+                  setTemperatureMin(e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Температура макс</label>
+              <input
+                className="pets-input"
+                type="number"
+                value={temperatureMax}
+                onChange={(e) =>
+                  setTemperatureMax(e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Влажность мин</label>
+              <input
+                className="pets-input"
+                type="number"
+                value={humidityMin}
+                onChange={(e) =>
+                  setHumidityMin(e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Влажность макс</label>
+              <input
+                className="pets-input"
+                type="number"
+                value={humidityMax}
+                onChange={(e) =>
+                  setHumidityMax(e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Тип питания</label>
+              <input
+                className="pets-input"
+                placeholder="Например: сухой корм"
+                value={dietType}
+                onChange={(e) => setDietType(e.target.value)}
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Кормлений в день</label>
+              <input
+                className="pets-input"
+                type="number"
+                value={feedingsPerDay}
+                onChange={(e) =>
+                  setFeedingsPerDay(e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+            </div>
+
+            <div className="pets-field pets-field--wide">
+              <label className="pets-label">Детали питания</label>
+              <textarea
+                className="pets-textarea"
+                placeholder="Например: кормить 2 раза в день, без молочных продуктов"
+                value={dietDetails}
+                onChange={(e) => setDietDetails(e.target.value)}
+              />
+            </div>
+
+            <div className="pets-field pets-field--wide">
+              <label className="pets-label">Прививки</label>
+              <input
+                className="pets-input"
+                placeholder="Через запятую: rabies, complex"
+                value={vaccinationsText}
+                onChange={(e) => setVaccinationsText(e.target.value)}
+              />
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Нужна лицензия</label>
+              <select
+                className="pets-select"
+                value={licenseRequired === "" ? "" : licenseRequired ? "true" : "false"}
+                onChange={(e) =>
+                  setLicenseRequired(e.target.value === "" ? "" : e.target.value === "true")
+                }
+              >
+                <option value="">Не указано</option>
+                <option value="true">Да</option>
+                <option value="false">Нет</option>
+              </select>
+            </div>
+
+            <div className="pets-field">
+              <label className="pets-label">Можно совместное содержание</label>
+              <select
+                className="pets-select"
+                value={
+                  cohabitationAllowed === ""
+                    ? ""
+                    : cohabitationAllowed
+                    ? "true"
+                    : "false"
+                }
+                onChange={(e) =>
+                  setCohabitationAllowed(
+                    e.target.value === "" ? "" : e.target.value === "true"
+                  )
+                }
+              >
+                <option value="">Не указано</option>
+                <option value="true">Да</option>
+                <option value="false">Нет</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="pets-actions">
+            <button
+              type="button"
+              className="pets-btn pets-btn--primary"
+              onClick={handleCreate}
+            >
+              Добавить питомца
+            </button>
+          </div>
+        </section>
+
+        {message && <div className="pets-message">{message}</div>}
+
+        {pets.length > 0 && (
+          <section className="pets-list">
+            {pets.map((pet) => (
+              <article key={pet.id} className="pets-item">
+                {editingId === pet.id ? (
+                  <>
+                    <h2 className="pets-section-title">Редактирование питомца</h2>
+
+                    <div className="pets-form-grid">
+                      <div className="pets-field">
+                        <label className="pets-label">Имя</label>
+                        <input
+                          className="pets-input"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Вид</label>
+                        <select
+                          className="pets-select"
+                          value={editSpecies}
+                          onChange={(e) => setEditSpecies(e.target.value)}
+                        >
+                          {SPECIES_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="pets-field pets-field--wide">
+                        <label className="pets-label">Особые условия</label>
+                        <textarea
+                          className="pets-textarea"
+                          value={editConditions}
+                          onChange={(e) => setEditConditions(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Температура мин</label>
+                        <input
+                          className="pets-input"
+                          type="number"
+                          value={editTemperatureMin}
+                          onChange={(e) =>
+                            setEditTemperatureMin(
+                              e.target.value === "" ? "" : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Температура макс</label>
+                        <input
+                          className="pets-input"
+                          type="number"
+                          value={editTemperatureMax}
+                          onChange={(e) =>
+                            setEditTemperatureMax(
+                              e.target.value === "" ? "" : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Влажность мин</label>
+                        <input
+                          className="pets-input"
+                          type="number"
+                          value={editHumidityMin}
+                          onChange={(e) =>
+                            setEditHumidityMin(
+                              e.target.value === "" ? "" : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Влажность макс</label>
+                        <input
+                          className="pets-input"
+                          type="number"
+                          value={editHumidityMax}
+                          onChange={(e) =>
+                            setEditHumidityMax(
+                              e.target.value === "" ? "" : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Тип питания</label>
+                        <input
+                          className="pets-input"
+                          value={editDietType}
+                          onChange={(e) => setEditDietType(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Кормлений в день</label>
+                        <input
+                          className="pets-input"
+                          type="number"
+                          value={editFeedingsPerDay}
+                          onChange={(e) =>
+                            setEditFeedingsPerDay(
+                              e.target.value === "" ? "" : Number(e.target.value)
+                            )
+                          }
+                        />
+                      </div>
+
+                      <div className="pets-field pets-field--wide">
+                        <label className="pets-label">Детали питания</label>
+                        <textarea
+                          className="pets-textarea"
+                          value={editDietDetails}
+                          onChange={(e) => setEditDietDetails(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="pets-field pets-field--wide">
+                        <label className="pets-label">Прививки</label>
+                        <input
+                          className="pets-input"
+                          value={editVaccinationsText}
+                          onChange={(e) => setEditVaccinationsText(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">Нужна лицензия</label>
+                        <select
+                          className="pets-select"
+                          value={
+                            editLicenseRequired === ""
+                              ? ""
+                              : editLicenseRequired
+                              ? "true"
+                              : "false"
+                          }
+                          onChange={(e) =>
+                            setEditLicenseRequired(
+                              e.target.value === "" ? "" : e.target.value === "true"
+                            )
+                          }
+                        >
+                          <option value="">Не указано</option>
+                          <option value="true">Да</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </div>
+
+                      <div className="pets-field">
+                        <label className="pets-label">
+                          Можно совместное содержание
+                        </label>
+                        <select
+                          className="pets-select"
+                          value={
+                            editCohabitationAllowed === ""
+                              ? ""
+                              : editCohabitationAllowed
+                              ? "true"
+                              : "false"
+                          }
+                          onChange={(e) =>
+                            setEditCohabitationAllowed(
+                              e.target.value === "" ? "" : e.target.value === "true"
+                            )
+                          }
+                        >
+                          <option value="">Не указано</option>
+                          <option value="true">Да</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="pets-actions">
+                      <button
+                        type="button"
+                        className="pets-btn pets-btn--primary"
+                        onClick={saveEdit}
+                      >
+                        Сохранить
+                      </button>
+
+                      <button
+                        type="button"
+                        className="pets-btn pets-btn--ghost"
+                        onClick={cancelEdit}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="pets-item__top">
+                      <div>
+                        <h3 className="pets-item__title">{pet.name}</h3>
+                        <p className="pets-item__subtitle">
+                          {getSpeciesLabel((pet as any).species)}
+                        </p>
+                      </div>
+
+                      <div className="pets-actions">
+                        <button
+                          type="button"
+                          className="pets-btn pets-btn--secondary"
+                          onClick={() => startEdit(pet)}
+                        >
+                          Редактировать
+                        </button>
+
+                        <button
+                          type="button"
+                          className="pets-btn pets-btn--danger"
+                          onClick={() => handleDelete(pet.id)}
+                        >
+                          Удалить
+                        </button>
+
+                        <Link
+                          to="/hotels"
+                          className="pets-btn pets-btn--primary"
+                          style={{ textDecoration: "none" }}
+                        >
+                          Подобрать отель
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="pets-item__info">
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">Условия</div>
+                        <div className="pets-info-box__value">
+                          {(pet as any).conditions || "Не указано"}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">Температура</div>
+                        <div className="pets-info-box__value">
+                          {(pet as any).temperature_min ?? "—"} /{" "}
+                          {(pet as any).temperature_max ?? "—"}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">Влажность</div>
+                        <div className="pets-info-box__value">
+                          {(pet as any).humidity_min ?? "—"} /{" "}
+                          {(pet as any).humidity_max ?? "—"}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">Тип питания</div>
+                        <div className="pets-info-box__value">
+                          {(pet as any).diet_type || "Не указано"}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">
+                          Детали питания
+                        </div>
+                        <div className="pets-info-box__value">
+                          {(pet as any).diet_details || "Не указано"}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">
+                          Кормлений в день
+                        </div>
+                        <div className="pets-info-box__value">
+                          {(pet as any).feedings_per_day ?? "Не указано"}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">Прививки</div>
+                        <div className="pets-info-box__value">
+                          {formatVaccinations((pet as any).vaccinations)}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">
+                          Лицензия нужна
+                        </div>
+                        <div className="pets-info-box__value">
+                          {boolText((pet as any).license_required)}
+                        </div>
+                      </div>
+
+                      <div className="pets-info-box">
+                        <div className="pets-info-box__label">
+                          Совместное содержание
+                        </div>
+                        <div className="pets-info-box__value">
+                          {boolText((pet as any).cohabitation_allowed)}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </article>
+            ))}
+          </section>
+        )}
+      </div>
     </div>
   );
 }

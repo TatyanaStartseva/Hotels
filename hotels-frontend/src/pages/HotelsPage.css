@@ -1,0 +1,262 @@
+/* ---------- ОСНОВА ---------- */
+
+.hotels-page {
+  width: 100%;
+  padding: 32px 20px 48px;
+}
+
+.hotels-page__layout {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  gap: 24px;
+  align-items: start;
+}
+
+.hotels-page__sidebar-sticky {
+  position: sticky;
+  top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 260px;
+}
+
+.hotels-page__content {
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---------- КАРТОЧКИ ---------- */
+
+.hotels-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  margin-bottom: 20px;
+}
+
+/* УБРАЛИ ФИОЛЕТОВЫЙ */
+.hotels-hero {
+  background: #f9fafb;
+}
+
+/* ---------- HEADER ---------- */
+
+.hotels-hero__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hotels-hero__title {
+  margin: 0 0 8px;
+  font-size: 34px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.hotels-hero__subtitle {
+  margin: 0;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.hotels-hero__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---------- КНОПКИ (ГЛАВНОЕ) ---------- */
+
+.hotels-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.hotels-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* ВСЕ ОСНОВНЫЕ КНОПКИ СИНИЕ */
+.hotels-btn--primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24);
+}
+
+.hotels-btn--secondary {
+  background: #3b82f6;
+  color: white;
+}
+
+.hotels-btn--ghost {
+  background: #60a5fa;
+  color: white;
+}
+
+.hotels-btn--danger {
+  background: #ef4444;
+  color: white;
+}
+
+/* ---------- ФОРМЫ ---------- */
+
+.hotels-search-grid,
+.hotels-admin-grid,
+.hotels-edit-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.hotels-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.hotels-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hotels-field--wide {
+  grid-column: span 2;
+}
+
+.hotels-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.hotels-input,
+.hotels-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  outline: none;
+  transition: 0.2s;
+}
+
+.hotels-input:focus,
+.hotels-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.hotels-inline-action {
+  display: flex;
+  gap: 10px;
+}
+
+/* ---------- СПИСОК ОТЕЛЕЙ ---------- */
+
+.hotels-list {
+  display: grid;
+  gap: 16px;
+}
+
+.hotels-item-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+
+.hotels-item-card__content {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hotels-item-card__link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+}
+
+.hotels-item-card__image {
+  width: 110px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #e5e7eb;
+}
+
+.hotels-item-card__info {
+  min-width: 0;
+}
+
+.hotels-item-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.hotels-item-card__location {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.hotels-item-card__admin-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* ---------- СООБЩЕНИЯ ---------- */
+
+.hotels-message {
+  margin-bottom: 20px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* ---------- МОБИЛКА ---------- */
+
+@media (max-width: 1100px) {
+  .hotels-page__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .hotels-page__sidebar-sticky {
+    position: static;
+    flex-direction: row;
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .hotels-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hotels-field--wide {
+    grid-column: span 1;
+  }
+}

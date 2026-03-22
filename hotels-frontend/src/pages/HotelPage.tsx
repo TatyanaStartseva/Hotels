@@ -1,6 +1,7 @@
-// hotels-frontend/src/pages/HotelPage.tsx
+import "./HotelPage.css";
+
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 import { getRooms, createRoom, deleteRoom, updateRoom } from "../api/rooms";
 import type { Room } from "../api/rooms";
@@ -14,6 +15,7 @@ import { getHotelReviews, createReview, replyReview } from "../api/reviews";
 import type { ReviewOut } from "../api/reviews";
 
 export default function HotelPage() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const hotelId = Number(id);
 
@@ -25,8 +27,8 @@ export default function HotelPage() {
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
-  // ---------- Admin: create room ----------
   const [newTitle, setNewTitle] = useState("");
   const [newPrice, setNewPrice] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number | "">("");
@@ -48,7 +50,6 @@ export default function HotelPage() {
   const [newLicenseRequired, setNewLicenseRequired] = useState(false);
   const [newCohabAllowed, setNewCohabAllowed] = useState(true);
 
-  // ---------- Admin: edit room ----------
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [editTitle, setEditTitle] = useState("");
@@ -72,7 +73,6 @@ export default function HotelPage() {
   const [editLicenseRequired, setEditLicenseRequired] = useState(false);
   const [editCohabAllowed, setEditCohabAllowed] = useState(true);
 
-  // ---------- Reviews ----------
   const [reviews, setReviews] = useState<ReviewOut[]>([]);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
 
@@ -83,14 +83,12 @@ export default function HotelPage() {
   const [replyingReviewId, setReplyingReviewId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState<string>("");
 
-  // ---------- helpers ----------
   const roomIdSet = useMemo(() => new Set(rooms.map((r) => r.id)), [rooms]);
 
   const myBookingsForThisHotel = useMemo(() => {
     return myBookings.filter((b) => roomIdSet.has(b.room_id));
   }, [myBookings, roomIdSet]);
 
-  // ---------- loaders ----------
   const checkMe = async () => {
     try {
       const me = await getMe();
@@ -102,12 +100,19 @@ export default function HotelPage() {
 
   const loadRooms = async () => {
     try {
-      const params = dateFrom && dateTo ? { date_from: dateFrom, date_to: dateTo } : undefined;
+      const params =
+        dateFrom && dateTo ? { date_from: dateFrom, date_to: dateTo } : undefined;
       const data = await getRooms(hotelId, params);
       setRooms(data);
+      if (!data.length) {
+        setMessage("Для этого отеля пока нет доступных комнат.");
+      } else {
+        setMessage(null);
+      }
     } catch (e) {
       console.error("loadRooms failed:", e);
       setRooms([]);
+      setMessage("Ошибка при загрузке комнат.");
     }
   };
 
@@ -131,9 +136,8 @@ export default function HotelPage() {
     }
   };
 
-  // init on hotel change
   useEffect(() => {
-    if (!hotelId) return;
+    if (!hotelId || Number.isNaN(hotelId)) return;
     loadRooms();
     loadReviews();
     loadMyBookings();
@@ -141,14 +145,12 @@ export default function HotelPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelId]);
 
-  // reload availability on date change
   useEffect(() => {
-    if (!hotelId) return;
+    if (!hotelId || Number.isNaN(hotelId)) return;
     loadRooms();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFrom, dateTo]);
 
-  // ---------- actions ----------
   const handleBook = async (roomId: number) => {
     if (!dateFrom || !dateTo) {
       alert("Выбери даты");
@@ -168,7 +170,7 @@ export default function HotelPage() {
       setBookingRoomId(roomId);
       await createBooking({ room_id: roomId, date_from: dateFrom, date_to: dateTo });
       await loadRooms();
-      await loadMyBookings(); // чтобы сразу появилась бронь в отзывах
+      await loadMyBookings();
       alert("Бронь создана");
     } catch (e: any) {
       console.error("createBooking failed:", e);
@@ -212,25 +214,20 @@ export default function HotelPage() {
         cohabitation_allowed: newCohabAllowed,
       });
 
-      // reset
       setNewTitle("");
       setNewPrice("");
       setNewQuantity("");
       setNewDescription("");
-
       setNewAllowedSpecies("");
       setNewTempMin("");
       setNewTempMax("");
       setNewHumMin("");
       setNewHumMax("");
-
       setNewRoomConditions("");
       setNewVaccinations("");
       setNewChipRequired(false);
-
       setNewDietSupported("");
       setNewFeedingsMax("");
-
       setNewLicenseRequired(false);
       setNewCohabAllowed(true);
 
@@ -243,51 +240,40 @@ export default function HotelPage() {
 
   const startEditRoom = (room: Room) => {
     setEditingId(room.id);
-
     setEditTitle(room.title);
     setEditDescription(room.description ?? "");
-
     setEditPrice(room.price);
     setEditQuantity(room.quantity);
-
     setEditAllowedSpecies((room.allowed_species ?? []).join(", "));
     setEditTempMin(room.temp_min ?? "");
     setEditTempMax(room.temp_max ?? "");
     setEditHumMin(room.humidity_min ?? "");
     setEditHumMax(room.humidity_max ?? "");
-
     setEditRoomConditions(room.room_conditions ?? "");
     setEditVaccinations((room.vaccinations_required ?? []).join(", "));
     setEditChipRequired(Boolean(room.chip_required));
-
     setEditDietSupported((room.diet_supported ?? []).join(", "));
     setEditFeedingsMax(room.feedings_per_day_max ?? "");
-
     setEditLicenseRequired(Boolean(room.license_required));
     setEditCohabAllowed(room.cohabitation_allowed ?? true);
   };
 
   const cancelEditRoom = () => {
     setEditingId(null);
-
     setEditTitle("");
     setEditDescription("");
     setEditPrice("");
     setEditQuantity("");
-
     setEditAllowedSpecies("");
     setEditTempMin("");
     setEditTempMax("");
     setEditHumMin("");
     setEditHumMax("");
-
     setEditRoomConditions("");
     setEditVaccinations("");
     setEditChipRequired(false);
-
     setEditDietSupported("");
     setEditFeedingsMax("");
-
     setEditLicenseRequired(false);
     setEditCohabAllowed(true);
   };
@@ -303,23 +289,18 @@ export default function HotelPage() {
       await updateRoom(hotelId, editingId, {
         title: editTitle,
         description: editDescription.trim() ? editDescription.trim() : null,
-
         price: editPrice === "" ? undefined : Number(editPrice),
         quantity: editQuantity === "" ? undefined : Number(editQuantity),
-
         allowed_species: allowed_species.length ? allowed_species : null,
         temp_min: editTempMin === "" ? null : Number(editTempMin),
         temp_max: editTempMax === "" ? null : Number(editTempMax),
         humidity_min: editHumMin === "" ? null : Number(editHumMin),
         humidity_max: editHumMax === "" ? null : Number(editHumMax),
-
         room_conditions: editRoomConditions.trim() ? editRoomConditions.trim() : null,
         vaccinations_required: vaccinations_required.length ? vaccinations_required : null,
         chip_required: editChipRequired,
-
         diet_supported: diet_supported.length ? diet_supported : null,
         feedings_per_day_max: editFeedingsMax === "" ? null : Number(editFeedingsMax),
-
         license_required: editLicenseRequired,
         cohabitation_allowed: editCohabAllowed,
       });
@@ -343,7 +324,6 @@ export default function HotelPage() {
     }
   };
 
-  // ---------- reviews actions ----------
   const handleCreateReview = async () => {
     if (reviewBookingId === "") {
       alert("Выбери бронирование");
@@ -387,577 +367,735 @@ export default function HotelPage() {
     }
   };
 
-  // ---------- render ----------
   return (
-    <div style={{ maxWidth: 900, margin: "40px auto" }}>
-      <h1>Отель #{hotelId}</h1>
+    <div className="hotel-page">
+      <div className="hotel-page__container">
+        <section className="hotel-card hotel-hero">
+          <div className="hotel-hero__top">
+            <div>
+              <h1 className="hotel-hero__title">Отель #{hotelId}</h1>
+              <p className="hotel-hero__subtitle">
+                Комнаты, бронирование и отзывы об отеле
+              </p>
+            </div>
 
-      <div style={{ marginBottom: 20 }}>
-        <label>
-          Дата заезда:
-          <input
-            type="date"
-            value={dateFrom}
-            min={today}
-            onChange={(e) => setDateFrom(e.target.value)}
-            style={{ marginLeft: 8 }}
-          />
-        </label>
+            <div className="hotel-actions">
+              <button
+                type="button"
+                className="hotel-btn hotel-btn--ghost"
+                onClick={() => navigate("/hotels")}
+              >
+                К отелям
+              </button>
 
-        <label style={{ marginLeft: 12 }}>
-          Дата выезда:
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom || today}
-            onChange={(e) => setDateTo(e.target.value)}
-            style={{ marginLeft: 8 }}
-          />
-        </label>
-      </div>
+              <button
+                type="button"
+                className="hotel-btn hotel-btn--secondary"
+                onClick={() => navigate("/bookings")}
+              >
+                Мои бронирования
+              </button>
+            </div>
+          </div>
+        </section>
 
-      <h2>Комнаты</h2>
+        <section className="hotel-card">
+          <h2 className="hotel-section-title">Даты бронирования</h2>
 
-      <ul style={{ marginBottom: 20, paddingLeft: 18 }}>
-        {rooms.map((r) => (
-          <li key={r.id} style={{ marginBottom: 14 }}>
-            {editingId === r.id ? (
-              <div style={{ border: "1px solid #eee", padding: 10 }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Название"
-                    style={{ width: 220 }}
-                  />
-                  <input
-                    type="number"
-                    value={editPrice}
-                    onChange={(e) =>
-                      setEditPrice(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Цена"
-                    style={{ width: 120 }}
-                  />
-                  <input
-                    type="number"
-                    value={editQuantity}
-                    onChange={(e) =>
-                      setEditQuantity(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Количество"
-                    style={{ width: 140 }}
-                  />
-                </div>
+          <div className="hotel-form-grid">
+            <div className="hotel-field">
+              <label className="hotel-label">Дата заезда</label>
+              <input
+                className="hotel-input"
+                type="date"
+                value={dateFrom}
+                min={today}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
 
-                <div style={{ marginTop: 8 }}>
-                  <input
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="Описание"
-                    style={{ width: "100%" }}
-                  />
-                </div>
+            <div className="hotel-field">
+              <label className="hotel-label">Дата выезда</label>
+              <input
+                className="hotel-input"
+                type="date"
+                value={dateTo}
+                min={dateFrom || today}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+          </div>
+        </section>
 
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-                  <input
-                    value={editAllowedSpecies}
-                    onChange={(e) => setEditAllowedSpecies(e.target.value)}
-                    placeholder="Разрешённые виды (cat,dog,...)"
-                    style={{ width: 300 }}
-                  />
-                  <input
-                    type="number"
-                    value={editTempMin}
-                    onChange={(e) =>
-                      setEditTempMin(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Темп. мин"
-                    style={{ width: 120 }}
-                  />
-                  <input
-                    type="number"
-                    value={editTempMax}
-                    onChange={(e) =>
-                      setEditTempMax(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Темп. макс"
-                    style={{ width: 120 }}
-                  />
-                  <input
-                    type="number"
-                    value={editHumMin}
-                    onChange={(e) =>
-                      setEditHumMin(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Влажн. мин"
-                    style={{ width: 120 }}
-                  />
-                  <input
-                    type="number"
-                    value={editHumMax}
-                    onChange={(e) =>
-                      setEditHumMax(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Влажн. макс"
-                    style={{ width: 120 }}
-                  />
-                </div>
+        {message && <div className="hotel-message">{message}</div>}
 
-                <div style={{ marginTop: 8 }}>
-                  <input
-                    value={editRoomConditions}
-                    onChange={(e) => setEditRoomConditions(e.target.value)}
-                    placeholder="Условия комнаты"
-                    style={{ width: "100%" }}
-                  />
-                </div>
+        <section className="hotel-card">
+          <h2 className="hotel-section-title">Комнаты</h2>
 
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
-                  <input
-                    value={editVaccinations}
-                    onChange={(e) => setEditVaccinations(e.target.value)}
-                    placeholder="Прививки (rabies,complex...)"
-                    style={{ width: 340 }}
-                  />
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    Чип обязателен:
-                    <input
-                      type="checkbox"
-                      checked={editChipRequired}
-                      onChange={(e) => setEditChipRequired(e.target.checked)}
-                    />
-                  </label>
-                </div>
+          <div className="hotel-rooms-list">
+            {rooms.map((r) => (
+              <article key={r.id} className="hotel-room-card">
+                {editingId === r.id ? (
+                  <>
+                    <h3 className="hotel-room-card__title">Редактирование комнаты</h3>
 
-                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
-                  <input
-                    value={editDietSupported}
-                    onChange={(e) => setEditDietSupported(e.target.value)}
-                    placeholder="Диеты (dry,natural...)"
-                    style={{ width: 340 }}
-                  />
-                  <input
-                    type="number"
-                    value={editFeedingsMax}
-                    onChange={(e) =>
-                      setEditFeedingsMax(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="Макс. кормлений/день"
-                    style={{ width: 220 }}
-                  />
-                </div>
+                    <div className="hotel-form-grid">
+                      <div className="hotel-field">
+                        <label className="hotel-label">Название</label>
+                        <input
+                          className="hotel-input"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                        />
+                      </div>
 
-                <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 8 }}>
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    Лицензия нужна:
-                    <input
-                      type="checkbox"
-                      checked={editLicenseRequired}
-                      onChange={(e) => setEditLicenseRequired(e.target.checked)}
-                    />
-                  </label>
+                      <div className="hotel-field">
+                        <label className="hotel-label">Цена</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editPrice}
+                          onChange={(e) =>
+                            setEditPrice(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
 
-                  <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    Совместно можно:
-                    <input
-                      type="checkbox"
-                      checked={editCohabAllowed}
-                      onChange={(e) => setEditCohabAllowed(e.target.checked)}
-                    />
-                  </label>
-                </div>
+                      <div className="hotel-field">
+                        <label className="hotel-label">Количество</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editQuantity}
+                          onChange={(e) =>
+                            setEditQuantity(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
 
-                <div style={{ marginTop: 10 }}>
-                  <button onClick={saveEditRoom} style={{ marginRight: 6 }}>
-                    Сохранить
-                  </button>
-                  <button onClick={cancelEditRoom}>Отмена</button>
-                </div>
-              </div>
+                      <div className="hotel-field hotel-field--wide">
+                        <label className="hotel-label">Описание</label>
+                        <textarea
+                          className="hotel-textarea"
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="hotel-field hotel-field--wide">
+                        <label className="hotel-label">Разрешённые виды</label>
+                        <input
+                          className="hotel-input"
+                          value={editAllowedSpecies}
+                          onChange={(e) => setEditAllowedSpecies(e.target.value)}
+                          placeholder="cat, dog..."
+                        />
+                      </div>
+
+                      <div className="hotel-field">
+                        <label className="hotel-label">Темп. мин</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editTempMin}
+                          onChange={(e) =>
+                            setEditTempMin(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
+
+                      <div className="hotel-field">
+                        <label className="hotel-label">Темп. макс</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editTempMax}
+                          onChange={(e) =>
+                            setEditTempMax(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
+
+                      <div className="hotel-field">
+                        <label className="hotel-label">Влажн. мин</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editHumMin}
+                          onChange={(e) =>
+                            setEditHumMin(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
+
+                      <div className="hotel-field">
+                        <label className="hotel-label">Влажн. макс</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editHumMax}
+                          onChange={(e) =>
+                            setEditHumMax(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
+
+                      <div className="hotel-field hotel-field--wide">
+                        <label className="hotel-label">Условия комнаты</label>
+                        <input
+                          className="hotel-input"
+                          value={editRoomConditions}
+                          onChange={(e) => setEditRoomConditions(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="hotel-field hotel-field--wide">
+                        <label className="hotel-label">Прививки</label>
+                        <input
+                          className="hotel-input"
+                          value={editVaccinations}
+                          onChange={(e) => setEditVaccinations(e.target.value)}
+                          placeholder="rabies, complex"
+                        />
+                      </div>
+
+                      <div className="hotel-field hotel-field--wide">
+                        <label className="hotel-label">Поддерживаемые диеты</label>
+                        <input
+                          className="hotel-input"
+                          value={editDietSupported}
+                          onChange={(e) => setEditDietSupported(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="hotel-field">
+                        <label className="hotel-label">Макс. кормлений/день</label>
+                        <input
+                          className="hotel-input"
+                          type="number"
+                          value={editFeedingsMax}
+                          onChange={(e) =>
+                            setEditFeedingsMax(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="hotel-checkbox-row">
+                      <label className="hotel-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={editChipRequired}
+                          onChange={(e) => setEditChipRequired(e.target.checked)}
+                        />
+                        Чип обязателен
+                      </label>
+
+                      <label className="hotel-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={editLicenseRequired}
+                          onChange={(e) => setEditLicenseRequired(e.target.checked)}
+                        />
+                        Нужна лицензия
+                      </label>
+
+                      <label className="hotel-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={editCohabAllowed}
+                          onChange={(e) => setEditCohabAllowed(e.target.checked)}
+                        />
+                        Совместное содержание
+                      </label>
+                    </div>
+
+                    <div className="hotel-actions">
+                      <button
+                        type="button"
+                        className="hotel-btn hotel-btn--primary"
+                        onClick={saveEditRoom}
+                      >
+                        Сохранить
+                      </button>
+                      <button
+                        type="button"
+                        className="hotel-btn hotel-btn--ghost"
+                        onClick={cancelEditRoom}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="hotel-room-card__top">
+                      <div>
+                        <h3 className="hotel-room-card__title">{r.title}</h3>
+                        <p className="hotel-room-card__subtitle">
+                          {r.price} ₽ · осталось {r.available ?? r.quantity}
+                        </p>
+                      </div>
+
+                      <div className="hotel-actions">
+                        <button
+                          type="button"
+                          className="hotel-btn hotel-btn--primary"
+                          onClick={() => handleBook(r.id)}
+                          disabled={bookingRoomId === r.id}
+                        >
+                          {bookingRoomId === r.id ? "Бронирую..." : "Забронировать"}
+                        </button>
+
+                        {isAdmin && (
+                          <>
+                            <button
+                              type="button"
+                              className="hotel-btn hotel-btn--secondary"
+                              onClick={() => startEditRoom(r)}
+                            >
+                              Изменить
+                            </button>
+                            <button
+                              type="button"
+                              className="hotel-btn hotel-btn--danger"
+                              onClick={() => handleDeleteRoom(r.id)}
+                            >
+                              Удалить
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="hotel-room-details">
+                      {r.description && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Описание</div>
+                          <div className="hotel-room-detail-box__value">{r.description}</div>
+                        </div>
+                      )}
+
+                      {r.room_conditions && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Условия</div>
+                          <div className="hotel-room-detail-box__value">{r.room_conditions}</div>
+                        </div>
+                      )}
+
+                      {Array.isArray(r.allowed_species) && r.allowed_species.length > 0 && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Животные</div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.allowed_species.join(", ")}
+                          </div>
+                        </div>
+                      )}
+
+                      {(r.temp_min != null || r.temp_max != null) && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Температура</div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.temp_min != null ? `от ${r.temp_min}` : "—"}{" "}
+                            {r.temp_max != null ? `до ${r.temp_max}` : "—"} °C
+                          </div>
+                        </div>
+                      )}
+
+                      {(r.humidity_min != null || r.humidity_max != null) && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Влажность</div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.humidity_min != null ? `от ${r.humidity_min}` : "—"}{" "}
+                            {r.humidity_max != null ? `до ${r.humidity_max}` : "—"} %
+                          </div>
+                        </div>
+                      )}
+
+                      {Array.isArray(r.vaccinations_required) &&
+                        r.vaccinations_required.length > 0 && (
+                          <div className="hotel-room-detail-box">
+                            <div className="hotel-room-detail-box__label">Прививки</div>
+                            <div className="hotel-room-detail-box__value">
+                              {r.vaccinations_required.join(", ")}
+                            </div>
+                          </div>
+                        )}
+
+                      {r.chip_required != null && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Чип</div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.chip_required ? "обязателен" : "не нужен"}
+                          </div>
+                        </div>
+                      )}
+
+                      {Array.isArray(r.diet_supported) && r.diet_supported.length > 0 && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Диета</div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.diet_supported.join(", ")}
+                          </div>
+                        </div>
+                      )}
+
+                      {r.feedings_per_day_max != null && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">
+                            Кормлений/день
+                          </div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.feedings_per_day_max}
+                          </div>
+                        </div>
+                      )}
+
+                      {r.license_required != null && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">Лицензия</div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.license_required ? "нужна" : "не нужна"}
+                          </div>
+                        </div>
+                      )}
+
+                      {r.cohabitation_allowed != null && (
+                        <div className="hotel-room-detail-box">
+                          <div className="hotel-room-detail-box__label">
+                            Совместное содержание
+                          </div>
+                          <div className="hotel-room-detail-box__value">
+                            {r.cohabitation_allowed ? "можно" : "нельзя"}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="hotel-card">
+          <h2 className="hotel-section-title">Отзывы</h2>
+
+          <div className="hotel-review-create">
+            <h3 className="hotel-subtitle">Оставить отзыв</h3>
+
+            {myBookingsForThisHotel.length === 0 ? (
+              <p className="hotel-muted">
+                У тебя нет бронирований для этого отеля — отзыв оставить нельзя.
+              </p>
             ) : (
-              <div>
-                <div>
-                  <b>{r.title}</b> – {r.price}₽ – осталось {r.available ?? r.quantity}
+              <>
+                <div className="hotel-form-grid">
+                  <div className="hotel-field">
+                    <label className="hotel-label">Бронирование</label>
+                    <select
+                      className="hotel-input"
+                      value={reviewBookingId}
+                      onChange={(e) =>
+                        setReviewBookingId(e.target.value === "" ? "" : Number(e.target.value))
+                      }
+                    >
+                      <option value="">— выбери —</option>
+                      {myBookingsForThisHotel.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          #{b.id} (room_id={b.room_id}) {b.date_from} → {b.date_to}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="hotel-field">
+                    <label className="hotel-label">Оценка</label>
+                    <select
+                      className="hotel-input"
+                      value={reviewRating}
+                      onChange={(e) => setReviewRating(Number(e.target.value))}
+                    >
+                      {[5, 4, 3, 2, 1].map((x) => (
+                        <option key={x} value={x}>
+                          {x}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="hotel-field hotel-field--wide">
+                    <label className="hotel-label">Текст отзыва</label>
+                    <textarea
+                      className="hotel-textarea"
+                      value={reviewText}
+                      onChange={(e) => setReviewText(e.target.value)}
+                      placeholder="Текст отзыва..."
+                    />
+                  </div>
+                </div>
+
+                <div className="hotel-actions">
                   <button
-                    onClick={() => handleBook(r.id)}
-                    disabled={bookingRoomId === r.id}
-                    style={{ marginLeft: 10 }}
+                    type="button"
+                    className="hotel-btn hotel-btn--primary"
+                    onClick={handleCreateReview}
                   >
-                    {bookingRoomId === r.id ? "Бронирую..." : "Забронировать"}
+                    Отправить отзыв
                   </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="hotel-reviews-list">
+            {reviews.length === 0 ? (
+              <p className="hotel-muted">Пока нет отзывов.</p>
+            ) : (
+              reviews.map((r) => (
+                <article key={r.id} className="hotel-review-card">
+                  <div className="hotel-review-card__head">
+                    <div className="hotel-review-card__rating">Оценка: {r.rating}/5</div>
+                    <div className="hotel-review-card__date">
+                      {new Date(r.created_at).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div className="hotel-review-card__text">{r.text}</div>
+
+                  {r.owner_reply && (
+                    <div className="hotel-review-reply">
+                      <div className="hotel-review-reply__label">Ответ отеля</div>
+                      <div>{r.owner_reply}</div>
+                    </div>
+                  )}
 
                   {isAdmin && (
-                    <>
-                      <button style={{ marginLeft: 10 }} onClick={() => startEditRoom(r)}>
-                        Изменить
-                      </button>
-                      <button style={{ marginLeft: 10 }} onClick={() => handleDeleteRoom(r.id)}>
-                        Удалить
-                      </button>
-                    </>
-                  )}
-                </div>
-
-                {/* подробности */}
-                <div style={{ marginTop: 6, paddingLeft: 10, color: "#444" }}>
-                  {r.description && (
-                    <div>
-                      <span style={{ color: "gray" }}>Описание:</span> {r.description}
-                    </div>
-                  )}
-                  {r.room_conditions && (
-                    <div>
-                      <span style={{ color: "gray" }}>Условия:</span> {r.room_conditions}
-                    </div>
-                  )}
-                  {Array.isArray(r.allowed_species) && r.allowed_species.length > 0 && (
-                    <div>
-                      <span style={{ color: "gray" }}>Животные:</span> {r.allowed_species.join(", ")}
-                    </div>
-                  )}
-                  {(r.temp_min != null || r.temp_max != null) && (
-                    <div>
-                      <span style={{ color: "gray" }}>Температура:</span>{" "}
-                      {r.temp_min != null ? `от ${r.temp_min}` : "—"}{" "}
-                      {r.temp_max != null ? `до ${r.temp_max}` : "—"} °C
-                    </div>
-                  )}
-                  {(r.humidity_min != null || r.humidity_max != null) && (
-                    <div>
-                      <span style={{ color: "gray" }}>Влажность:</span>{" "}
-                      {r.humidity_min != null ? `от ${r.humidity_min}` : "—"}{" "}
-                      {r.humidity_max != null ? `до ${r.humidity_max}` : "—"} %
-                    </div>
-                  )}
-                  {Array.isArray(r.vaccinations_required) && r.vaccinations_required.length > 0 && (
-                    <div>
-                      <span style={{ color: "gray" }}>Прививки:</span>{" "}
-                      {r.vaccinations_required.join(", ")}
-                    </div>
-                  )}
-                  {r.chip_required != null && (
-                    <div>
-                      <span style={{ color: "gray" }}>Чип:</span>{" "}
-                      {r.chip_required ? "обязателен" : "не нужен"}
-                    </div>
-                  )}
-                  {Array.isArray(r.diet_supported) && r.diet_supported.length > 0 && (
-                    <div>
-                      <span style={{ color: "gray" }}>Диета:</span> {r.diet_supported.join(", ")}
-                    </div>
-                  )}
-                  {r.feedings_per_day_max != null && (
-                    <div>
-                      <span style={{ color: "gray" }}>Кормлений/день (макс):</span>{" "}
-                      {r.feedings_per_day_max}
-                    </div>
-                  )}
-                  {r.license_required != null && (
-                    <div>
-                      <span style={{ color: "gray" }}>Лицензия:</span>{" "}
-                      {r.license_required ? "нужна" : "не нужна"}
-                    </div>
-                  )}
-                  {r.cohabitation_allowed != null && (
-                    <div>
-                      <span style={{ color: "gray" }}>Совместно:</span>{" "}
-                      {r.cohabitation_allowed ? "можно" : "нельзя"}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {/* ---------- Reviews ---------- */}
-      <div style={{ marginTop: 30, borderTop: "1px solid #eee", paddingTop: 20 }}>
-        <h2>Отзывы</h2>
-
-        <div style={{ border: "1px solid #ddd", padding: 12, marginBottom: 20 }}>
-          <h4 style={{ marginTop: 0 }}>Оставить отзыв</h4>
-
-          {myBookingsForThisHotel.length === 0 ? (
-            <p style={{ color: "gray" }}>
-              У тебя нет бронирований для этого отеля — отзыв оставить нельзя.
-            </p>
-          ) : (
-            <>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <label>
-                  Бронирование:
-                  <select
-                    value={reviewBookingId}
-                    onChange={(e) =>
-                      setReviewBookingId(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    style={{ marginLeft: 8, minWidth: 260 }}
-                  >
-                    <option value="">— выбери —</option>
-                    {myBookingsForThisHotel.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        #{b.id} (room_id={b.room_id}) {b.date_from} → {b.date_to}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  Оценка:
-                  <select
-                    value={reviewRating}
-                    onChange={(e) => setReviewRating(Number(e.target.value))}
-                    style={{ marginLeft: 8 }}
-                  >
-                    {[5, 4, 3, 2, 1].map((x) => (
-                      <option key={x} value={x}>
-                        {x}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <div style={{ marginTop: 10 }}>
-                <textarea
-                  value={reviewText}
-                  onChange={(e) => setReviewText(e.target.value)}
-                  placeholder="Текст отзыва..."
-                  style={{ width: "100%", minHeight: 80 }}
-                />
-              </div>
-
-              <button style={{ marginTop: 10 }} onClick={handleCreateReview}>
-                Отправить отзыв
-              </button>
-            </>
-          )}
-        </div>
-
-        {reviews.length === 0 ? (
-          <p style={{ color: "gray" }}>Пока нет отзывов.</p>
-        ) : (
-          <ul style={{ paddingLeft: 16 }}>
-            {reviews.map((r) => (
-              <li key={r.id} style={{ marginBottom: 16 }}>
-                <div>
-                  <b>Оценка: {r.rating}/5</b>{" "}
-                  <span style={{ color: "gray" }}>
-                    — {new Date(r.created_at).toLocaleString()}
-                  </span>
-                </div>
-                <div style={{ marginTop: 4 }}>{r.text}</div>
-
-                {r.owner_reply && (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: 10,
-                      background: "#fafafa",
-                      border: "1px solid #eee",
-                    }}
-                  >
-                    <b>Ответ отеля:</b>
-                    <div style={{ marginTop: 4 }}>{r.owner_reply}</div>
-                  </div>
-                )}
-
-                {isAdmin && (
-                  <div style={{ marginTop: 8 }}>
-                    {replyingReviewId === r.id ? (
-                      <div>
-                        <textarea
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          placeholder="Ответ владельца/админа..."
-                          style={{ width: "100%", minHeight: 60 }}
-                        />
+                    <div className="hotel-review-admin">
+                      {replyingReviewId === r.id ? (
+                        <>
+                          <textarea
+                            className="hotel-textarea"
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            placeholder="Ответ владельца/админа..."
+                          />
+                          <div className="hotel-actions">
+                            <button
+                              type="button"
+                              className="hotel-btn hotel-btn--primary"
+                              onClick={() => handleReplyReview(r.id)}
+                            >
+                              Отправить ответ
+                            </button>
+                            <button
+                              type="button"
+                              className="hotel-btn hotel-btn--ghost"
+                              onClick={() => {
+                                setReplyingReviewId(null);
+                                setReplyText("");
+                              }}
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        </>
+                      ) : (
                         <button
-                          onClick={() => handleReplyReview(r.id)}
-                          style={{ marginRight: 6 }}
-                        >
-                          Отправить ответ
-                        </button>
-                        <button
+                          type="button"
+                          className="hotel-btn hotel-btn--secondary"
                           onClick={() => {
-                            setReplyingReviewId(null);
+                            setReplyingReviewId(r.id);
                             setReplyText("");
                           }}
                         >
-                          Отмена
+                          Ответить
                         </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setReplyingReviewId(r.id);
-                          setReplyText("");
-                        }}
-                      >
-                        Ответить
-                      </button>
-                    )}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+
+        {isAdmin && (
+          <section className="hotel-card">
+            <h2 className="hotel-section-title">Добавить комнату</h2>
+
+            <div className="hotel-form-grid">
+              <div className="hotel-field">
+                <label className="hotel-label">Название</label>
+                <input
+                  className="hotel-input"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Цена</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newPrice}
+                  onChange={(e) => setNewPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Количество</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newQuantity}
+                  onChange={(e) =>
+                    setNewQuantity(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                />
+              </div>
+
+              <div className="hotel-field hotel-field--wide">
+                <label className="hotel-label">Описание</label>
+                <textarea
+                  className="hotel-textarea"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="hotel-field hotel-field--wide">
+                <label className="hotel-label">Разрешённые виды</label>
+                <input
+                  className="hotel-input"
+                  value={newAllowedSpecies}
+                  onChange={(e) => setNewAllowedSpecies(e.target.value)}
+                  placeholder="cat, dog..."
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Темп. мин</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newTempMin}
+                  onChange={(e) => setNewTempMin(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Темп. макс</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newTempMax}
+                  onChange={(e) => setNewTempMax(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Влажн. мин</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newHumMin}
+                  onChange={(e) => setNewHumMin(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Влажн. макс</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newHumMax}
+                  onChange={(e) => setNewHumMax(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              <div className="hotel-field hotel-field--wide">
+                <label className="hotel-label">Условия комнаты</label>
+                <input
+                  className="hotel-input"
+                  value={newRoomConditions}
+                  onChange={(e) => setNewRoomConditions(e.target.value)}
+                />
+              </div>
+
+              <div className="hotel-field hotel-field--wide">
+                <label className="hotel-label">Требуемые прививки</label>
+                <input
+                  className="hotel-input"
+                  value={newVaccinations}
+                  onChange={(e) => setNewVaccinations(e.target.value)}
+                />
+              </div>
+
+              <div className="hotel-field hotel-field--wide">
+                <label className="hotel-label">Диеты</label>
+                <input
+                  className="hotel-input"
+                  value={newDietSupported}
+                  onChange={(e) => setNewDietSupported(e.target.value)}
+                />
+              </div>
+
+              <div className="hotel-field">
+                <label className="hotel-label">Макс. кормлений/день</label>
+                <input
+                  className="hotel-input"
+                  type="number"
+                  value={newFeedingsMax}
+                  onChange={(e) =>
+                    setNewFeedingsMax(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="hotel-checkbox-row">
+              <label className="hotel-checkbox">
+                <input
+                  type="checkbox"
+                  checked={newChipRequired}
+                  onChange={(e) => setNewChipRequired(e.target.checked)}
+                />
+                Чип обязателен
+              </label>
+
+              <label className="hotel-checkbox">
+                <input
+                  type="checkbox"
+                  checked={newLicenseRequired}
+                  onChange={(e) => setNewLicenseRequired(e.target.checked)}
+                />
+                Нужна лицензия
+              </label>
+
+              <label className="hotel-checkbox">
+                <input
+                  type="checkbox"
+                  checked={newCohabAllowed}
+                  onChange={(e) => setNewCohabAllowed(e.target.checked)}
+                />
+                Совместное содержание
+              </label>
+            </div>
+
+            <div className="hotel-actions">
+              <button
+                type="button"
+                className="hotel-btn hotel-btn--primary"
+                onClick={handleCreateRoom}
+              >
+                Добавить комнату
+              </button>
+            </div>
+          </section>
         )}
       </div>
-
-      {/* ---------- Admin create room ---------- */}
-      {isAdmin && (
-        <div style={{ border: "1px solid #ccc", padding: 12, marginTop: 26 }}>
-          <h3>Добавить комнату</h3>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input
-              placeholder="Название"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              style={{ width: 220 }}
-            />
-
-            <input
-              placeholder="Цена"
-              type="number"
-              value={newPrice}
-              onChange={(e) => setNewPrice(e.target.value === "" ? "" : Number(e.target.value))}
-              style={{ width: 120 }}
-            />
-
-            <input
-              placeholder="Количество"
-              type="number"
-              value={newQuantity}
-              onChange={(e) =>
-                setNewQuantity(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              style={{ width: 140 }}
-            />
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <input
-              placeholder="Описание"
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-            <input
-              placeholder="Разрешённые виды (cat,dog...)"
-              value={newAllowedSpecies}
-              onChange={(e) => setNewAllowedSpecies(e.target.value)}
-              style={{ width: 300 }}
-            />
-
-            <input
-              placeholder="Темп. мин"
-              type="number"
-              value={newTempMin}
-              onChange={(e) => setNewTempMin(e.target.value === "" ? "" : Number(e.target.value))}
-              style={{ width: 120 }}
-            />
-            <input
-              placeholder="Темп. макс"
-              type="number"
-              value={newTempMax}
-              onChange={(e) => setNewTempMax(e.target.value === "" ? "" : Number(e.target.value))}
-              style={{ width: 120 }}
-            />
-
-            <input
-              placeholder="Влажн. мин"
-              type="number"
-              value={newHumMin}
-              onChange={(e) => setNewHumMin(e.target.value === "" ? "" : Number(e.target.value))}
-              style={{ width: 120 }}
-            />
-            <input
-              placeholder="Влажн. макс"
-              type="number"
-              value={newHumMax}
-              onChange={(e) => setNewHumMax(e.target.value === "" ? "" : Number(e.target.value))}
-              style={{ width: 120 }}
-            />
-          </div>
-
-          <div style={{ marginTop: 10 }}>
-            <input
-              placeholder="Условия комнаты"
-              value={newRoomConditions}
-              onChange={(e) => setNewRoomConditions(e.target.value)}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
-            <input
-              placeholder="Требуемые прививки (rabies,complex...)"
-              value={newVaccinations}
-              onChange={(e) => setNewVaccinations(e.target.value)}
-              style={{ width: 340 }}
-            />
-
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              Чип обязателен:
-              <input
-                type="checkbox"
-                checked={newChipRequired}
-                onChange={(e) => setNewChipRequired(e.target.checked)}
-              />
-            </label>
-          </div>
-
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 10 }}>
-            <input
-              placeholder="Диеты (dry,natural...)"
-              value={newDietSupported}
-              onChange={(e) => setNewDietSupported(e.target.value)}
-              style={{ width: 340 }}
-            />
-
-            <input
-              placeholder="Макс. кормлений/день"
-              type="number"
-              value={newFeedingsMax}
-              onChange={(e) =>
-                setNewFeedingsMax(e.target.value === "" ? "" : Number(e.target.value))
-              }
-              style={{ width: 220 }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 10 }}>
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              Лицензия нужна:
-              <input
-                type="checkbox"
-                checked={newLicenseRequired}
-                onChange={(e) => setNewLicenseRequired(e.target.checked)}
-              />
-            </label>
-
-            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              Совместно можно:
-              <input
-                type="checkbox"
-                checked={newCohabAllowed}
-                onChange={(e) => setNewCohabAllowed(e.target.checked)}
-              />
-            </label>
-          </div>
-
-          <button onClick={handleCreateRoom} style={{ marginTop: 12 }}>
-            Добавить комнату
-          </button>
-        </div>
-      )}
     </div>
   );
 }

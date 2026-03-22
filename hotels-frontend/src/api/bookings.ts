@@ -1,40 +1,48 @@
-// src/api/bookings.ts
-import axios from "axios";
 import { api } from "./client";
 
-export interface BookingPayload {
+export type Booking = {
+  id: number;
   room_id: number;
-  date_from: string; // "2025-01-01"
-  pet_id: number;
-  date_to: string;
-}
+  user_id?: number;
+  pet_id?: number;
 
-export async function createBooking(payload: {
+  hotel_title?: string;
+  pet_name?: string;
+
+  date_from?: string;
+  date_to?: string;
+
+  start_date?: string;
+  end_date?: string;
+
+  status?: string;
+};
+
+export type BookingCreate = {
   room_id: number;
-  date_from: string;
-  date_to: string;
   pet_id: number;
-}) {
-  try {
-    const res = await api.post("/bookings", payload);
-    return res.data;
-  } catch (err: any) {
-    if (axios.isAxiosError(err)) {
-      const detail = err.response?.data?.detail;
-
-      // иногда detail может быть массивом (если pydantic validation)
-      if (Array.isArray(detail)) {
-        throw new Error(detail.map((x) => x.msg).join(", "));
-      }
-
-      throw new Error(detail ?? "Ошибка при бронировании");
-    }
-
-    throw new Error("Ошибка при бронировании");
-  }
-}
+  date_from?: string;
+  date_to?: string;
+  start_date?: string;
+  end_date?: string;
+};
 
 export async function getMyBookings() {
-  const res = await api.get("/bookings/me");
+  const res = await api.get<Booking[]>("/bookings/me");
   return res.data;
+}
+
+export async function createBooking(payload: BookingCreate) {
+  const res = await api.post("/bookings", payload);
+  return res.data;
+}
+
+export async function cancelBooking(bookingId: number) {
+  try {
+    const res = await api.patch(`/bookings/${bookingId}/cancel`);
+    return res.data;
+  } catch {
+    const res = await api.delete(`/bookings/${bookingId}`);
+    return res.data;
+  }
 }
