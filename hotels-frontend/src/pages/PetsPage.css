@@ -1,6 +1,8 @@
 .pets-page {
   width: 100%;
+  min-height: 100vh;
   padding: 32px 20px 48px;
+  background: #f8fafc;
 }
 
 .pets-page__container {
@@ -11,14 +13,15 @@
 .pets-card {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 22px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
   margin-bottom: 20px;
+  overflow: hidden;
 }
 
 .pets-hero {
-  background: #f9fafb;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .pets-hero__top {
@@ -34,6 +37,7 @@
   font-size: 34px;
   font-weight: 800;
   color: #111827;
+  line-height: 1.1;
 }
 
 .pets-hero__subtitle {
@@ -51,18 +55,27 @@
 
 .pets-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(280px, 380px));
+  column-gap: 32px;
+  row-gap: 20px;
+  justify-content: start;
+  align-items: start;
+  width: 100%;
 }
 
 .pets-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  max-width: 380px;
 }
 
 .pets-field--wide {
   grid-column: span 2;
+  width: 100%;
+  max-width: 792px;
 }
 
 .pets-label {
@@ -74,26 +87,40 @@
 .pets-input,
 .pets-select,
 .pets-textarea {
+  display: block;
   width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  max-width: 380px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 12px 14px;
+  border-radius: 14px;
   border: 1px solid #d1d5db;
-  background: #fff;
+  background: #ffffff;
   color: #111827;
   outline: none;
-  transition: 0.2s;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.pets-input::placeholder,
+.pets-textarea::placeholder {
+  color: #6b7280;
 }
 
 .pets-input:focus,
 .pets-select:focus,
 .pets-textarea:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.pets-field--wide .pets-input,
+.pets-field--wide .pets-select,
+.pets-field--wide .pets-textarea {
+  max-width: 792px;
 }
 
 .pets-textarea {
-  min-height: 100px;
+  min-height: 140px;
   resize: vertical;
 }
 
@@ -111,7 +138,7 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .pets-btn:hover {
@@ -149,7 +176,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 18px;
   padding: 18px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
 }
 
 .pets-item__top {
@@ -175,13 +202,13 @@
 
 .pets-item__info {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(240px, 1fr));
   gap: 12px;
   margin-top: 16px;
 }
 
 .pets-info-box {
-  background: #f9fafb;
+  background: #f8fafc;
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 12px;
@@ -198,7 +225,7 @@
 .pets-info-box__value {
   font-size: 14px;
   color: #111827;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .pets-message {
@@ -207,6 +234,42 @@
   border-radius: 12px;
   background: #f3f4f6;
   color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+/* страховка */
+.pets-form-grid .pets-field,
+.pets-form-grid .pets-field--wide {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.pets-form-grid .pets-input,
+.pets-form-grid .pets-select,
+.pets-form-grid .pets-textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 900px) {
+  .pets-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pets-field,
+  .pets-field--wide,
+  .pets-input,
+  .pets-select,
+  .pets-textarea,
+  .pets-field--wide .pets-input,
+  .pets-field--wide .pets-select,
+  .pets-field--wide .pets-textarea {
+    max-width: 100%;
+  }
+
+  .pets-field--wide {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 760px) {
@@ -214,16 +277,15 @@
     padding: 18px 12px 32px;
   }
 
-  .pets-form-grid,
   .pets-item__info {
     grid-template-columns: 1fr;
   }
 
-  .pets-field--wide {
-    grid-column: span 1;
-  }
-
   .pets-hero__title {
     font-size: 28px;
+  }
+
+  .pets-section-title {
+    font-size: 20px;
   }
 }
