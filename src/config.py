@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
+
+    STRIPE_SECRET_KEY: str | None = None
+    STRIPE_WEBHOOK_SECRET: str | None = None
+    STRIPE_PRICE_BASIC: str | None = None
+    STRIPE_PRICE_PRO: str | None = None
+    STRIPE_PRICE_PREMIUM: str | None = None
+
+    FRONTEND_URL: str = "http://localhost:5173"
+
     @property
     def DB_URL(self):
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

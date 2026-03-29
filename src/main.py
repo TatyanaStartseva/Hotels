@@ -18,13 +18,16 @@ from src.api.rooms_search import router as router_rooms_search
 from src.api.rooms_search import router as rooms_search_router
 from src.api.reviews import router as reviews_router
 from src.api.ads import router as router_ads
-
+from src.api.billing import router as router_billing
 
 app = FastAPI(docs_url=None)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # фронт
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,7 +41,7 @@ app.include_router(router_rooms)
 app.include_router(router_bookings)
 app.include_router(router_pets)
 app.include_router(router_ads)
-
+app.include_router(router_billing)
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html():
     return get_swagger_ui_html(

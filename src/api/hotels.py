@@ -30,24 +30,24 @@ async def get_hotels(
     # сначала пробуем локальные алиасы (RU/EN -> IATA)
     if location:
         city_raw = location.strip()
+        location_variants = {city_raw}
+
         city_code = normalize_city_input(city_raw)
 
-        # если локально не получилось — пробуем Amadeus
         if not city_code:
             am = AmadeusClient()
             city_code = await am.resolve_city_code(city_raw)
 
-        #  если код нашли — используем его (как раньше)
         if city_code:
-            location = city_code
-        else:
-            # если ничего не нашли
-            # оставляем location как есть, чтобы поискать по нашей БД (например по location_ru или алиасам)
-            location = city_raw
+            location_variants.add(city_code)
+
+
+    else:
+        location_variants = None
 
     return await db.hotels.get_all(
         id=id,
-        location=location,
+        location_variants=list(location_variants) if location_variants else None,
         title=title,
         limit=per_page,
         offset=per_page * (pagination.page - 1),
@@ -80,10 +80,10 @@ async def post_hotels(
 ):
     city_raw = hotel_data.location.strip()
 
-    # ✅ 1) сначала локально RU/EN -> IATA
+    #  1) сначала локально RU/EN -> IATA
     city_code = normalize_city_input(city_raw)
 
-    # ✅ 2) если не получилось — пробуем Amadeus
+    # 2) если не получилось — пробуем Amadeus
     if not city_code:
         am = AmadeusClient()
         city_code = await am.resolve_city_code(city_raw)
@@ -94,14 +94,14 @@ async def post_hotels(
             detail=f"Не удалось определить IATA-код для '{city_raw}'",
         )
 
-    # ✅ 3) сохраняем ВСЕ поля (важно: images не потерять)
+    # 3) сохраняем ВСЕ поля (важно: images не потерять)
     payload = {
         "title": hotel_data.title,
         "location": city_code,
         "images": hotel_data.images,
     }
 
-    # ✅ если у тебя уже добавлены поля варианта 2 — сохраним русские значения
+    #  если у тебя уже добавлены поля варианта 2 — сохраним русские значения
     if hasattr(HotelsOrm, "location_ru"):
         payload["location_ru"] = city_raw
     if hasattr(HotelsOrm, "title_ru"):

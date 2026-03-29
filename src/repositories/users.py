@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, update
 from pydantic import EmailStr
 from src.models.users import UsersOrm
 from src.repositories.base import BaseRepository
@@ -14,3 +14,11 @@ class UsersRepository(BaseRepository):
         result = await self.session.execute(query)
         model = result.scalars().one()
         return UserWithHashedPassword.model_validate(model)
+
+    async def edit(self, data: dict, **filter_by):
+        query = (
+            update(UsersOrm)
+            .where(*[getattr(UsersOrm, k) == v for k, v in filter_by.items()])
+            .values(**data)
+        )
+        await self.session.execute(query)

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Body
 from src.api.dependencies import DBDep, UserIdDep, AdminDep
 from src.schemas.reviews import ReviewAdd, ReviewReply, ReviewOut
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/reviews", tags=["Отзывы"])
 
@@ -30,23 +31,38 @@ async def create_review(
     if booking.user_id != user_id:
         raise HTTPException(status_code=403, detail="Это не ваша бронь")
 
-    # 3) бронь должна относиться к отелю (через комнату)
+    # уже есть отзыв?
+    existing_review = await db.reviews.get_one_or_none(booking_id=data.booking_id)
+    if existing_review:
+        raise HTTPException(
+            status_code=409,
+            detail="Вы уже оставили отзыв на это бронирование. Можно только один отзыв."
+        )
+
+    # 4) бронь должна относиться к отелю (через комнату)
     room = await db.rooms.get_room(booking.room_id)
     if not room:
         raise HTTPException(status_code=404, detail="Комната не найдена")
 
     hotel_id = room.hotel_id
 
-    # 4) создаем отзыв
-    obj = await db.reviews.create(
-        hotel_id=hotel_id,
-        user_id=user_id,
-        booking_id=data.booking_id,
-        rating=data.rating,
-        text=data.text,
-    )
-    await db.commit()
-    return ReviewOut.model_validate(obj, from_attributes=True)
+    try:
+        obj = await db.reviews.create(
+            hotel_id=hotel_id,
+            user_id=user_id,
+            booking_id=data.booking_id,
+            rating=data.rating,
+            text=data.text,
+        )
+        await db.commit()
+        return ReviewOut.model_validate(obj, from_attributes=True)
+
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Вы уже оставили отзыв на это бронирование. Можно только один отзыв."
+        )
 
 
 @router.post("/{review_id}/reply", summary="Ответ владельца/админа на отзыв")

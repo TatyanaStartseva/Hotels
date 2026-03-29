@@ -11,7 +11,7 @@ class HotelsRepository(BaseRepository):
     async def get_all(
         self,
         id: int | None = None,
-        location: str | None = None,
+        location_variants: list[str] | None = None,
         title: str | None = None,
         limit: int = 10,
         offset: int = 0,
@@ -24,33 +24,35 @@ class HotelsRepository(BaseRepository):
         if title:
             t = title.strip()
             like_expr = f"%{t}%"
-            query = query.where(
-                or_(
-                    self.model.title.ilike(like_expr),
-                    getattr(self.model, "title_ru", None).ilike(like_expr)
-                    if hasattr(self.model, "title_ru")
-                    else False,
-                )
-            )
 
-        if location:
-            loc = location.strip()
-            like_expr = f"%{loc}%"
-            query = query.where(
-                or_(
-                    self.model.location.ilike(like_expr),
-                    getattr(self.model, "location_ru", None).ilike(like_expr)
-                    if hasattr(self.model, "location_ru")
-                    else False,
-                )
-            )
+            conditions = [self.model.title.ilike(like_expr)]
+            if hasattr(self.model, "title_ru"):
+                conditions.append(self.model.title_ru.ilike(like_expr))
+
+            query = query.where(or_(*conditions))
+
+        if location_variants:
+            location_conditions = []
+
+            for loc in location_variants:
+                loc = loc.strip()
+                if not loc:
+                    continue
+
+                like_expr = f"%{loc}%"
+                location_conditions.append(self.model.location.ilike(like_expr))
+
+                if hasattr(self.model, "location_ru"):
+                    location_conditions.append(self.model.location_ru.ilike(like_expr))
+
+            if location_conditions:
+                query = query.where(or_(*location_conditions))
 
         query = query.limit(limit).offset(offset)
 
         result = await self.session.execute(query)
         hotels = result.scalars().all()
         return [self.schema.model_validate(h, from_attributes=True) for h in hotels]
-
     async def get_hotel(self, id: int):
         query = select(self.model).where(self.model.id == id)
         result = await self.session.execute(query)

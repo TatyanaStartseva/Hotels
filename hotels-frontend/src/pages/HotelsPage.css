@@ -383,7 +383,14 @@
   .hotels-section-title {
     font-size: 20px;
   }
+    .hotels-btn--primary {
+  background: #2563eb;
+  color: white;
+}
 
+.hotels-btn--primary:hover {
+  background: #1d4ed8;
+}
   .hotels-inline-action {
     flex-direction: column;
   }

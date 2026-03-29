@@ -12,7 +12,6 @@ import { getMe } from "../api/auth";
 import { getMyPets, type Pet } from "../api/pets";
 import { searchRooms, type RoomSearchOut } from "../api/roomsSearch";
 import AdBanner from "../components/AdBanner";
-
 type SpeciesOption = { label: string; value: string };
 type ConditionOption = { label: string; value: string };
 
@@ -484,6 +483,7 @@ export default function HotelsPage() {
               </div>
 
               <div className="hotels-hero__actions">
+
                 <button
                   type="button"
                   className="hotels-btn hotels-btn--ghost"
@@ -507,6 +507,13 @@ export default function HotelsPage() {
                 >
                   Мои бронирования
                 </button>
+                <button
+  type="button"
+  className="hotels-btn hotels-btn--secondary"
+  onClick={() => navigate("/plans")}
+>
+  Подписки
+</button>
                 {isAdmin && (
     <button
       type="button"

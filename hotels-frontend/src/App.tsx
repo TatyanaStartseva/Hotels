@@ -7,6 +7,7 @@ import BookingsPage from "./pages/BookingsPage";
 import PetsPage from "./pages/PetsPage";
 import AdminAdsPage from "./pages/AdminAdsPage";
 import AdminRoute from "./components/AdminRoute";
+import PlansPage from "./pages/PlansPage";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
     <Route path="/hotels/:id" element={<HotelPage />} />
     <Route path="/bookings" element={<BookingsPage />} />
     <Route path="/pets" element={<PetsPage />} />
+    <Route path="/plans" element={<PlansPage />} />
     <Route path="*" element={<Navigate to="/" />} />
   </Routes>
 </BrowserRouter>

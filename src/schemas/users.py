@@ -1,19 +1,27 @@
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
+from datetime import datetime
 
 
 class UserRequestAdd(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserAdd(BaseModel):
     email: EmailStr
     hashed_password: str
     is_admin: bool = False
 
+
 class User(BaseModel):
-    id : int
+    id: int
     email: EmailStr
     is_admin: bool = False
+
+    subscription_plan: str | None = None
+    subscription_status: str = "free"
+    subscription_ends_at: datetime | None = None
+
     model_config = ConfigDict(from_attributes=True)
 
 
