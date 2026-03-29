@@ -373,7 +373,7 @@ export default function HotelPage() {
         <section className="hotel-card hotel-hero">
           <div className="hotel-hero__top">
             <div>
-              <h1 className="hotel-hero__title">Отель #{hotelId}</h1>
+              <h1 className="hotel-hero__title">Отель </h1>
               <p className="hotel-hero__subtitle">
                 Комнаты, бронирование и отзывы об отеле
               </p>
