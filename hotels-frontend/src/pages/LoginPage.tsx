@@ -2,24 +2,35 @@ import "./LoginPage.css";
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginUser } from "../api/auth";
+import { loginUser, registerUser } from "../api/auth";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const resetMessages = () => {
     setMessage(null);
     setError(null);
+  };
 
+  const validateForm = () => {
     if (!email.trim() || !password.trim()) {
       setError("Введите email и пароль");
-      return;
+      return false;
     }
+    return true;
+  };
+
+  const handleLogin = async () => {
+    resetMessages();
+
+    if (!validateForm()) return;
 
     try {
       await loginUser({
@@ -29,18 +40,51 @@ export default function LoginPage() {
 
       setMessage("Вход выполнен успешно");
       navigate("/hotels");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      setError("Ошибка входа. Проверьте email и пароль.");
+      setError(e?.response?.data?.detail ?? "Ошибка входа. Проверьте email и пароль.");
+    }
+  };
+
+  const handleRegister = async () => {
+    resetMessages();
+
+    if (!validateForm()) return;
+
+    try {
+      await registerUser({
+        email: email.trim(),
+        password,
+      });
+
+      setMessage("Регистрация прошла успешно. Теперь войдите в аккаунт.");
+      setIsRegisterMode(false);
+      setPassword("");
+    } catch (e: any) {
+      console.error(e);
+      setError(e?.response?.data?.detail ?? "Ошибка регистрации");
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (isRegisterMode) {
+      await handleRegister();
+    } else {
+      await handleLogin();
     }
   };
 
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1 className="login-title">Вход</h1>
+        <h1 className="login-title">
+          {isRegisterMode ? "Регистрация" : "Вход"}
+        </h1>
+
         <p className="login-subtitle">
-          Войдите в аккаунт, чтобы управлять отелями, питомцами и бронированиями
+          {isRegisterMode
+            ? "Создайте аккаунт, чтобы бронировать отели, управлять питомцами и оставлять отзывы"
+            : "Войдите в аккаунт, чтобы управлять отелями, питомцами и бронированиями"}
         </p>
 
         {message && <div className="login-message">{message}</div>}
@@ -67,7 +111,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                handleLogin();
+                handleSubmit();
               }
             }}
           />
@@ -77,18 +121,29 @@ export default function LoginPage() {
           <button
             type="button"
             className="login-btn login-btn--primary"
-            onClick={handleLogin}
+            onClick={handleSubmit}
           >
-            Войти
+            {isRegisterMode ? "Зарегистрироваться" : "Войти"}
           </button>
 
           <button
             type="button"
-            className="login-btn login-btn--secondary"
-            onClick={() => navigate("/hotels")}
+            className="login-btn login-btn--accent"
+            onClick={() => {
+              resetMessages();
+              setIsRegisterMode((prev) => !prev);
+            }}
           >
-            К отелям
+            {isRegisterMode ? "Уже есть аккаунт? Войти" : "Перейти к регистрации"}
           </button>
+
+          <button
+  type="button"
+  className="login-btn login-btn--primary"
+  onClick={() => navigate("/hotels")}
+>
+  К отелям
+</button>
         </div>
       </div>
     </div>

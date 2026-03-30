@@ -28,6 +28,7 @@
   margin: 0 0 24px;
   color: #6b7280;
   font-size: 15px;
+  line-height: 1.5;
 }
 
 .login-field {
@@ -45,19 +46,17 @@
 
 .login-input {
   width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
-  display: block;
-
+  box-sizing: border-box;
   padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid #d1d5db;
   background: #f1f5f9;
-
   transition: 0.2s;
+  font-size: 14px;
 }
 
 .login-input:focus {
+  outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
 }
@@ -89,17 +88,24 @@
   box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24);
 }
 
+.login-btn--accent {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(59, 130, 246, 0.2);
+}
+
 .login-btn--secondary {
-  background: #3b82f6;
-  color: white;
+  background: #e5e7eb;
+  color: #111827;
 }
 
 .login-message {
   margin-bottom: 16px;
   padding: 12px 14px;
   border-radius: 12px;
-  background: #f3f4f6;
-  color: #374151;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
 }
 
 .login-error {
