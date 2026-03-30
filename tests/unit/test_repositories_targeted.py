@@ -221,7 +221,7 @@ async def test_hotels_repository_get_all_returns_filtered_hotels():
     )
     repo = HotelsRepository(session)
 
-    result = await repo.get_all(location="Moscow", title=None, id=None, limit=10, offset=0)
+    result = await repo.get_all(location_variants=["Moscow"], title=None, id=None, limit=10, offset=0)
 
     assert len(result) == 2
     assert result[0].title == "Alpha"

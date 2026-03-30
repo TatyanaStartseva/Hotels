@@ -83,19 +83,49 @@ class FakeHotelsRepo:
     def __init__(self, db: 'FakeDBManager'):
         self.db = db
 
-    async def get_all(self, id=None, location=None, title=None, limit=10, offset=0):
+    async def get_all(
+        self,
+        id=None,
+        location=None,
+        location_variants=None,
+        title=None,
+        limit=10,
+        offset=0,
+    ):
         items = list(self.db.hotels_store.values())
+
         if id is not None:
             items = [h for h in items if h.id == id]
+
         if title:
             items = [h for h in items if title.lower() in h.title.lower()]
-        if location:
-            items = [h for h in items if location.lower() in h.location.lower()]
+
+        effective_locations = []
+        if location_variants:
+            effective_locations = [x.lower() for x in location_variants if x]
+        elif location:
+            effective_locations = [location.lower()]
+
+        if effective_locations:
+            filtered = []
+            for h in items:
+                loc = (getattr(h, "location", "") or "").lower()
+                loc_ru = (getattr(h, "location_ru", "") or "").lower()
+                if any(v in loc or v in loc_ru for v in effective_locations):
+                    filtered.append(h)
+            items = filtered
+
         return items[offset: offset + limit]
 
     async def add(self, data):
         new_id = max(self.db.hotels_store.keys() or [0]) + 1
-        hotel = SimpleNamespace(id=new_id, title=data.title, location=data.location, images=getattr(data, 'images', []))
+        hotel = SimpleNamespace(
+            id=new_id,
+            title=data.title,
+            location=data.location,
+            location_ru=getattr(data, "location_ru", None),
+            images=getattr(data, "images", []),
+        )
         self.db.hotels_store[new_id] = hotel
         return hotel
 

@@ -22,9 +22,12 @@ async def test_list_reviews_delegates_to_repository():
 @pytest.mark.asyncio
 async def test_create_review_returns_404_when_booking_missing():
     db = SimpleNamespace(
-        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=None)),
-        rooms=SimpleNamespace(get_room=AsyncMock()),
-        reviews=SimpleNamespace(create=AsyncMock()),
+        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=2, room_id=7))),
+        rooms=SimpleNamespace(get_room=AsyncMock(return_value=None)),
+        reviews=SimpleNamespace(
+            get_one_or_none=AsyncMock(return_value=None),
+            create=AsyncMock(),
+        ),
         commit=AsyncMock(),
     )
 
@@ -36,7 +39,7 @@ async def test_create_review_returns_404_when_booking_missing():
         )
 
     assert exc.value.status_code == 404
-    assert 'Бронь не найдена' in exc.value.detail
+    assert 'Комната не найдена' in exc.value.detail
     db.commit.assert_not_awaited()
 
 
@@ -67,7 +70,10 @@ async def test_create_review_returns_404_when_room_missing():
     db = SimpleNamespace(
         bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=2, room_id=7))),
         rooms=SimpleNamespace(get_room=AsyncMock(return_value=None)),
-        reviews=SimpleNamespace(create=AsyncMock()),
+        reviews=SimpleNamespace(
+            get_one_or_none=AsyncMock(return_value=None),
+            create=AsyncMock(),
+        ),
         commit=AsyncMock(),
     )
 
@@ -99,7 +105,10 @@ async def test_create_review_success_uses_room_hotel_id_and_commits():
     db = SimpleNamespace(
         bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=2, room_id=7))),
         rooms=SimpleNamespace(get_room=AsyncMock(return_value=SimpleNamespace(id=7, hotel_id=77))),
-        reviews=SimpleNamespace(create=AsyncMock(return_value=review_obj)),
+        reviews=SimpleNamespace(
+            get_one_or_none=AsyncMock(return_value=None),
+            create=AsyncMock(return_value=review_obj),
+        ),
         commit=AsyncMock(),
     )
 
