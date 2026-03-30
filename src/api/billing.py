@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 import stripe
 
 from fastapi import APIRouter, HTTPException, Request
@@ -124,7 +124,7 @@ async def stripe_webhook(request: Request, db: DBDep):
                 "provider_subscription_id": subscription_id,
                 "provider_customer_id": customer_id,
                 "payment_provider": "stripe",
-                "subscription_started_at": datetime.utcnow(),
+                "subscription_started_at": datetime.now(UTC),
             },
             id=user_id,
         )
