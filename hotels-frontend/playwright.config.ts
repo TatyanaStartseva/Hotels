@@ -15,7 +15,7 @@ export default defineConfig({
 
   webServer: [
     {
-      command: "python -m uvicorn src.main:app --host 127.0.0.1 --port 8000",
+      command: "python -m uvicorn src.main:app --host 127.0.0.1 --port 8000 --no-access-log",
       port: 8000,
       reuseExistingServer: true,
       timeout: 120_000,
