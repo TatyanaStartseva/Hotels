@@ -6,7 +6,7 @@ function formatDate(offsetDays: number) {
   return d.toISOString().split("T")[0];
 }
 
-test.describe("E2E: бронирование через фронт и бек", () => {
+test.describe("", () => {
   const email = `booking_${Date.now()}@example.com`;
   const password = "secret123";
 
@@ -21,7 +21,7 @@ test.describe("E2E: бронирование через фронт и бек", (
     expect(registerResponse.ok()).toBeTruthy();
   });
 
-  test("пользователь открывает страницу отеля и может заполнить даты", async ({ page }) => {
+  test("попытка бронирования со страницы отеля отправляет POST /bookings", async ({ page }) => {
     await page.goto("/login");
 
     await page.getByPlaceholder("Введите email").fill(email);

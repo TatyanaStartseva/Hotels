@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("E2E: список отелей", () => {
+test.describe("список отелей", () => {
   const email = `hotels_${Date.now()}@example.com`;
   const password = "secret123";
 
@@ -18,7 +18,7 @@ test.describe("E2E: список отелей", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test("главная делает запрос в бек и показывает страницу", async ({ page }) => {
+  test("главная страница загружает список отелей через GET /hotels", async ({ page }) => {
     const hotelsResponsePromise = page.waitForResponse((response) => {
       return response.url().includes("/hotels") && response.request().method() === "GET";
     });
@@ -31,7 +31,7 @@ test.describe("E2E: список отелей", () => {
     await expect(page.getByRole("heading", { name: /Отели/i })).toBeVisible();
   });
 
-  test("поиск по названию работает после логина", async ({ page }) => {
+  test("поле поиска по названию доступно после авторизации", async ({ page }) => {
     await page.goto("/");
 
     const searchInput = page.getByPlaceholder(/название отеля|название/i);

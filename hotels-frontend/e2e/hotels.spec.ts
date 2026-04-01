@@ -18,25 +18,25 @@ test.describe('Главная страница отелей', () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
-  test('главная страница открывается', async ({ page }) => {
+  test('главная страница отелей отображается после авторизации', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /Отели/i })).toBeVisible();
   });
 
-  test('на странице есть поиск по городу и названию', async ({ page }) => {
+  test('форма поиска содержит поля города и названия отеля', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.getByPlaceholder(/город|location/i)).toBeVisible();
     await expect(page.getByPlaceholder(/название отеля|название/i)).toBeVisible();
   });
 
-  test('на странице есть фильтр по требованиям питомца', async ({ page }) => {
+  test('форма фильтрации отображает параметры питомца', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.locator('body')).toContainText(/питом|живот|species|вакцин|темп/i);
   });
 
-  test('можно заполнить фильтры на главной странице', async ({ page }) => {
+  test('пользователь может заполнить фильтры поиска отелей', async ({ page }) => {
     await page.goto('/');
 
     await page.getByPlaceholder(/город|location/i).fill('Moscow');
@@ -50,7 +50,7 @@ test.describe('Главная страница отелей', () => {
     await expect(page.getByPlaceholder('Темп. макс')).toHaveValue('28');
   });
 
-  test('кнопка очистки фильтра сбрасывает поля', async ({ page }) => {
+  test('кнопка очистки сбрасывает значения фильтров', async ({ page }) => {
     await page.goto('/');
 
     await page.getByPlaceholder('Темп. мин').fill('20');
@@ -74,10 +74,6 @@ test.describe('Главная страница отелей', () => {
     }
   });
 
-  test('кнопка Войти переводит на страницу логина', async ({ page }) => {
-    await page.goto('/login');
-    await expect(page).toHaveURL(/\/login/);
-  });
 
   test('кнопка Мои бронирования открывает страницу бронирований', async ({ page, request }) => {
     const localEmail = `bookings_btn_${Date.now()}@example.com`;

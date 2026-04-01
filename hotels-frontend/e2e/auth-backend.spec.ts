@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("E2E: авторизация через фронт и бек", () => {
+test.describe("", () => {
   const email = `user_${Date.now()}@example.com`;
   const password = "secret123";
 
@@ -15,7 +15,7 @@ test.describe("E2E: авторизация через фронт и бек", () 
     expect(registerResponse.ok()).toBeTruthy();
   });
 
-  test("пользователь логинится через UI, запрос уходит на бек, после логина открывается главная", async ({
+  test("успешный вход через UI выполняет авторизацию на бэкенде", async ({
     page,
   }) => {
     await page.goto("/login");
