@@ -46,7 +46,7 @@ async function loginViaUi(page: Page, email: string, password: string) {
   expect(token).toBeTruthy();
 }
 
-test.describe("E2E: сценарий бронирования", () => {
+test.describe("сценарий бронирования", () => {
   test.beforeEach(async ({ page }) => {
     await page.context().clearCookies();
     await page.addInitScript(() => {

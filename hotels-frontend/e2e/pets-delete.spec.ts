@@ -41,7 +41,7 @@ async function loginViaUi(page: Page, email: string, password: string) {
   await expect(page.getByRole("heading", { name: /отели/i })).toBeVisible();
 }
 
-test.describe("питомцы", () => {
+test.describe("удаление питомца", () => {
   test.beforeEach(async ({ page }) => {
     await page.context().clearCookies();
     await page.addInitScript(() => {
@@ -50,13 +50,13 @@ test.describe("питомцы", () => {
     });
   });
 
-  test("пользователь добавляет питомца через UI, и он отображается после перезагрузки страницы", async ({
+  test("пользователь удаляет питомца через UI, backend удаляет запись из БД, и UI обновляется", async ({
     page,
     request,
   }) => {
-    const email = uniqueEmail("pet_create");
+    const email = uniqueEmail("pet_delete");
     const password = "secret123";
-    const petName = uniquePetName("Барсик");
+    const petName = uniquePetName("ТестПитомец");
 
     await registerViaApi(request, email, password);
     await loginViaUi(page, email, password);
@@ -81,19 +81,8 @@ test.describe("питомцы", () => {
 
     const selects = page.locator("select");
     await selects.nth(0).selectOption("cat");
-
-    await page
-      .getByPlaceholder(/Например: нужен террариум, подогрев, тишина/i)
-      .fill("Тихое место, без сквозняков");
-
-    await page.getByPlaceholder(/Например: сухой корм/i).fill("Сухой корм");
-    await page
-      .getByPlaceholder(/Через запятую: rabies, complex/i)
-      .fill("rabies, complex");
-
-    // ВАЖНО: иначе backend отдаёт 422
-    await selects.nth(1).selectOption("false"); // Нужна лицензия
-    await selects.nth(2).selectOption("true");  // Можно совместное содержание
+    await selects.nth(1).selectOption("false");
+    await selects.nth(2).selectOption("true");
 
     const createPetResponsePromise = page.waitForResponse((response) => {
       return (
@@ -108,22 +97,34 @@ test.describe("питомцы", () => {
     expect(createPetResponse.status()).toBe(200);
 
     await expect(page.locator("body")).toContainText(petName);
-    await expect(page.locator("body")).toContainText("Кошка");
-    await expect(page.locator("body")).toContainText("Тихое место, без сквозняков");
 
-    const reloadPetsResponsePromise = page.waitForResponse((response) => {
+    page.once("dialog", async (dialog) => {
+      expect(dialog.message()).toMatch(/удалить питомца/i);
+      await dialog.accept();
+    });
+
+    const deleteResponsePromise = page.waitForResponse((response) => {
+      return (
+        /\/pets\/\d+/.test(response.url()) &&
+        response.request().method() === "DELETE"
+      );
+    });
+
+    const reloadAfterDeletePromise = page.waitForResponse((response) => {
       return (
         response.url().includes("/pets/me") &&
         response.request().method() === "GET"
       );
     });
 
-    await page.reload();
+    await page.getByRole("button", { name: /^Удалить$/i }).first().click();
 
-    const reloadPetsResponse = await reloadPetsResponsePromise;
-    expect(reloadPetsResponse.status()).toBe(200);
+    const deleteResponse = await deleteResponsePromise;
+    expect(deleteResponse.status()).toBe(200);
 
-    await expect(page.locator("body")).toContainText(petName);
-    await expect(page.locator("body")).toContainText("Тихое место, без сквозняков");
+    const reloadAfterDelete = await reloadAfterDeletePromise;
+    expect(reloadAfterDelete.status()).toBe(200);
+
+    await expect(page.locator("body")).not.toContainText(petName);
   });
 });

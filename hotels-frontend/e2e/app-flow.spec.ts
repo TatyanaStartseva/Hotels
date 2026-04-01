@@ -39,7 +39,7 @@ async function loginViaUi(page: Page, email: string, password: string) {
   await expect(page.getByRole("heading", { name: /Отели/i })).toBeVisible();
 }
 
-test.describe("E2E: сквозные пользовательские сценарии", () => {
+test.describe("сквозные пользовательские сценарии", () => {
   test.beforeEach(async ({ page }) => {
     await page.context().clearCookies();
     await page.addInitScript(() => {
