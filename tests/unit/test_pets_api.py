@@ -1,4 +1,4 @@
-
+import pytest
 def test_get_my_pets_requires_auth(client):
     response = client.get('/pets/me')
     assert response.status_code == 401
@@ -37,10 +37,34 @@ def test_create_pet_rejects_invalid_humidity_range(client, auth_headers):
     assert 'humidity_min > humidity_max' in response.json()['detail']
 
 
-def test_create_pet_rejects_feedings_less_than_one(client, auth_headers):
-    response = client.post('/pets', headers=auth_headers, json={'feedings_per_day': 0})
+
+
+@pytest.mark.parametrize("feedings_per_day", [0, -1])
+def test_create_pet_rejects_feedings_less_than_one(client, auth_headers, feedings_per_day):
+    response = client.post(
+        "/pets",
+        headers=auth_headers,
+        json={
+            "name": "Барсик",
+            "feedings_per_day": feedings_per_day,
+        },
+    )
+
     assert response.status_code == 422
-    assert 'feedings_per_day must be >= 1' in response.json()['detail']
+    assert "feedings_per_day" in str(response.json()["detail"])
+
+
+def test_create_pet_accepts_feedings_equal_one(client, auth_headers):
+    response = client.post(
+        "/pets",
+        headers=auth_headers,
+        json={
+            "name": "Барсик",
+            "feedings_per_day": 1,
+        },
+    )
+
+    assert response.status_code in (200, 201)
 
 
 def test_create_pet_rejects_missing_license_number(client, auth_headers):

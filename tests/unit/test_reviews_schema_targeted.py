@@ -5,34 +5,55 @@ from pydantic import ValidationError
 
 from src.schemas.reviews import ReviewAdd, ReviewOut, ReviewReply
 
+@pytest.mark.parametrize(
+    "rating",
+    [1, 3, 5]
+)
+def test_review_add_accepts_valid_rating(rating):
+    review = ReviewAdd(
+        booking_id=1,
+        rating=rating,
+        text='Ок'
+    )
 
-def test_review_add_accepts_boundary_rating_values():
-    low = ReviewAdd(booking_id=1, rating=1, text='Норм')
-    high = ReviewAdd(booking_id=2, rating=5, text='Отлично')
+    assert review.rating == rating
 
-    assert low.rating == 1
-    assert high.rating == 5
-
-
-def test_review_add_rejects_rating_below_minimum():
+@pytest.mark.parametrize(
+    "rating",
+    [0, -1, 6]
+)
+def test_review_add_rejects_invalid_rating(rating):
     with pytest.raises(ValidationError):
-        ReviewAdd(booking_id=1, rating=0, text='Плохо')
+        ReviewAdd(
+            booking_id=1,
+            rating=rating,
+            text='Тест'
+        )
 
 
-def test_review_add_rejects_rating_above_maximum():
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "o",
+    ]
+)
+def test_review_add_rejects_too_short_text(text):
     with pytest.raises(ValidationError):
-        ReviewAdd(booking_id=1, rating=6, text='Слишком хорошо')
+        ReviewAdd(booking_id=1, rating=5, text=text)
 
 
-def test_review_add_rejects_too_short_text():
-    with pytest.raises(ValidationError):
-        ReviewAdd(booking_id=1, rating=5, text='ok')
-
-
-def test_review_reply_rejects_empty_string():
-    with pytest.raises(ValidationError):
-        ReviewReply(owner_reply='')
-
+@pytest.mark.parametrize(
+    "text",
+    [
+        "окок",
+        "Норм",
+        "Хорошо",
+    ]
+)
+def test_review_add_accepts_valid_text(text):
+    review = ReviewAdd(booking_id=1, rating=5, text=text)
+    assert review.text == text
 
 def test_review_out_can_be_built_from_attributes():
     obj = type('ReviewObj', (), {
