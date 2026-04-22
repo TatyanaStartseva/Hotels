@@ -8,6 +8,8 @@ import PetsPage from "./pages/PetsPage";
 import AdminAdsPage from "./pages/AdminAdsPage";
 import AdminRoute from "./components/AdminRoute";
 import PlansPage from "./pages/PlansPage";
+import OwnerHotelsPage from "./pages/OwnerHotelsPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 
 function App() {
   return (
@@ -25,7 +27,15 @@ function App() {
     <Route path="/" element={<HotelsPage />} />
     <Route path="/hotels/:id" element={<HotelPage />} />
     <Route path="/bookings" element={<BookingsPage />} />
-    <Route path="/pets" element={<PetsPage />} />
+    <Route
+  path="/admin/users"
+  element={
+    <AdminRoute>
+      <AdminUsersPage />
+    </AdminRoute>
+  }
+/><Route path="/pets" element={<PetsPage />} />
+    <Route path="/owner/hotels" element={<OwnerHotelsPage />} />
     <Route path="/plans" element={<PlansPage />} />
     <Route path="*" element={<Navigate to="/" />} />
   </Routes>

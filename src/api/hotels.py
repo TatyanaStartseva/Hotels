@@ -5,9 +5,9 @@ from fastapi import HTTPException
 
 from fastapi import APIRouter , Query,Body
 
-from src.api.dependencies import PaginationDep, AdminDep
+from src.api.dependencies import PaginationDep, AdminDep, HotelOwnerDep, ensure_hotel_owner_or_admin
 from src.models.hotels import HotelsOrm
-from src.schemas.hotels import Hotel, HotelPatch, HotelAdd
+from src.schemas.hotels import Hotel, HotelPatch, HotelAdd, HotelOwnerCreate, HotelStatusPatch
 from src.clients.amadeus import AmadeusClient
 from src.services.search_both import search_hotels_read_through_both
 
@@ -200,3 +200,105 @@ async def search_hotels_both(
         with_rates=with_rates,
         alias_location=alias_location,
     )
+
+
+@router.post("/owner", summary="Владелец создаёт свой отель")
+async def create_owner_hotel(
+    db: DBDep,
+    owner_id: HotelOwnerDep,
+    hotel_data: HotelOwnerCreate,
+):
+    city_raw = hotel_data.location.strip()
+
+    city_code = normalize_city_input(city_raw)
+    if not city_code:
+        am = AmadeusClient()
+        city_code = await am.resolve_city_code(city_raw)
+
+    if not city_code:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Не удалось определить IATA-код для '{city_raw}'",
+        )
+
+    payload = {
+        "title": hotel_data.title,
+        "location": city_code,
+        "images": hotel_data.images,
+        "owner_id": owner_id,
+        "status": "draft",
+        "location_ru": hotel_data.location_ru or city_raw,
+        "title_ru": hotel_data.title_ru or hotel_data.title,
+    }
+
+    hotel = await db.hotels.add(HotelAdd(**payload))
+    await db.commit()
+    return {"status": "ok", "saved": hotel}
+
+
+@router.get("/owner/my", summary="Мои отели")
+async def get_my_hotels(db: DBDep, owner_id: HotelOwnerDep):
+    return await db.hotels.get_all(owner_id=owner_id, only_published=False, limit=100, offset=0)
+
+
+@router.patch("/owner/{hotel_id}", summary="Владелец редактирует свой отель")
+async def patch_my_hotel(
+    hotel_id: int,
+    hotel_data: HotelPatch,
+    db: DBDep,
+    owner_id: HotelOwnerDep,
+):
+    await ensure_hotel_owner_or_admin(hotel_id, owner_id, db)
+
+    update_data = hotel_data.model_dump(exclude_unset=True)
+
+    if "location" in update_data and update_data["location"]:
+        city_raw = update_data["location"].strip()
+        city_code = normalize_city_input(city_raw)
+        if not city_code:
+            am = AmadeusClient()
+            city_code = await am.resolve_city_code(city_raw)
+        if not city_code:
+            raise HTTPException(status_code=400, detail=f"Не удалось определить IATA-код для '{city_raw}'")
+        update_data["location"] = city_code
+        update_data["location_ru"] = city_raw
+
+    res = await db.hotels.edit(HotelPatch(**update_data), exclude_unset=True, id=hotel_id)
+    if res["status"] != "success":
+        raise HTTPException(status_code=404, detail="Hotel not found")
+
+    await db.commit()
+    return {"status": "ok"}
+
+@router.post("/owner/{hotel_id}/publish", summary="Опубликовать свой отель")
+async def publish_my_hotel(
+    hotel_id: int,
+    db: DBDep,
+    owner_id: HotelOwnerDep,
+):
+    hotel = await ensure_hotel_owner_or_admin(hotel_id, owner_id, db)
+
+    if not hotel.images:
+        raise HTTPException(status_code=400, detail="Добавьте хотя бы одно изображение")
+
+    res = await db.hotels.edit(HotelStatusPatch(status="published"), id=hotel_id)
+    if res["status"] != "success":
+        raise HTTPException(status_code=404, detail="Hotel not found")
+
+    await db.commit()
+    return {"status": "ok"}
+
+@router.post("/owner/{hotel_id}/unpublish", summary="Снять свой отель с публикации")
+async def unpublish_my_hotel(
+    hotel_id: int,
+    db: DBDep,
+    owner_id: HotelOwnerDep,
+):
+    await ensure_hotel_owner_or_admin(hotel_id, owner_id, db)
+
+    res = await db.hotels.edit(HotelStatusPatch(status="draft"), id=hotel_id)
+    if res["status"] != "success":
+        raise HTTPException(status_code=404, detail="Hotel not found")
+
+    await db.commit()
+    return {"status": "ok"}

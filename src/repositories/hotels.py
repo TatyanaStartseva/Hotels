@@ -9,14 +9,22 @@ class HotelsRepository(BaseRepository):
     schema = Hotel
 
     async def get_all(
-        self,
-        id: int | None = None,
-        location_variants: list[str] | None = None,
-        title: str | None = None,
-        limit: int = 10,
-        offset: int = 0,
+            self,
+            id: int | None = None,
+            location_variants: list[str] | None = None,
+            title: str | None = None,
+            limit: int = 10,
+            offset: int = 0,
+            only_published: bool = True,
+            owner_id: int | None = None,
     ):
         query = select(self.model)
+
+        if only_published:
+            query = query.where(self.model.status == "published")
+
+        if owner_id is not None:
+            query = query.where(self.model.owner_id == owner_id)
 
         if id is not None:
             query = query.where(self.model.id == id)

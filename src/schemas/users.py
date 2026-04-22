@@ -11,12 +11,14 @@ class UserAdd(BaseModel):
     email: EmailStr
     hashed_password: str
     is_admin: bool = False
+    is_hotel_owner: bool = False
 
 
 class User(BaseModel):
     id: int
     email: EmailStr
     is_admin: bool = False
+    is_hotel_owner: bool = False
 
     subscription_plan: str | None = None
     subscription_status: str = "free"

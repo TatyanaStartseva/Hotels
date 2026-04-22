@@ -10,6 +10,8 @@ import { createBooking, getMyBookings } from "../api/bookings";
 import type { Booking } from "../api/bookings";
 
 import { getMe } from "../api/auth";
+import { getHotels } from "../api/hotels";
+import type { Hotel } from "../api/hotels";
 
 import { getHotelReviews, createReview, replyReview } from "../api/reviews";
 import type { ReviewOut } from "../api/reviews";
@@ -26,6 +28,10 @@ export default function HotelPage() {
   const [dateTo, setDateTo] = useState("");
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isHotelOwner, setIsHotelOwner] = useState(false);
+  const [myUserId, setMyUserId] = useState<number | null>(null);
+  const [hotel, setHotel] = useState<Hotel | null>(null);
+
   const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -89,21 +95,45 @@ export default function HotelPage() {
     return myBookings.filter((b) => roomIdSet.has(b.room_id));
   }, [myBookings, roomIdSet]);
 
+  const isOwnerOfThisHotel =
+    isHotelOwner && hotel?.owner_id != null && hotel.owner_id === myUserId;
+
+  const canManageRooms = isAdmin || isOwnerOfThisHotel;
+
   const checkMe = async () => {
     try {
       const me = await getMe();
       setIsAdmin(me.is_admin === true);
+      setIsHotelOwner(me.is_hotel_owner === true);
+      setMyUserId(me.id);
     } catch {
       setIsAdmin(false);
+      setIsHotelOwner(false);
+      setMyUserId(null);
+    }
+  };
+
+  const loadHotel = async () => {
+    try {
+      const data = await getHotels({ id: hotelId });
+      const currentHotel = Array.isArray(data) ? data[0] ?? null : null;
+      setHotel(currentHotel);
+    } catch (e) {
+      console.error("loadHotel failed:", e);
+      setHotel(null);
     }
   };
 
   const loadRooms = async () => {
     try {
       const params =
-        dateFrom && dateTo ? { date_from: dateFrom, date_to: dateTo } : undefined;
+        !isOwnerOfThisHotel && dateFrom && dateTo
+          ? { date_from: dateFrom, date_to: dateTo }
+          : undefined;
+
       const data = await getRooms(hotelId, params);
       setRooms(data);
+
       if (!data.length) {
         setMessage("Для этого отеля пока нет доступных комнат.");
       } else {
@@ -138,32 +168,53 @@ export default function HotelPage() {
 
   useEffect(() => {
     if (!hotelId || Number.isNaN(hotelId)) return;
-    loadRooms();
-    loadReviews();
-    loadMyBookings();
-    checkMe();
+
+    const init = async () => {
+      await checkMe();
+      await loadHotel();
+    };
+
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hotelId]);
 
   useEffect(() => {
     if (!hotelId || Number.isNaN(hotelId)) return;
+
+    loadRooms();
+
+    if (!isOwnerOfThisHotel) {
+      loadReviews();
+      loadMyBookings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotelId, isOwnerOfThisHotel]);
+
+  useEffect(() => {
+    if (!hotelId || Number.isNaN(hotelId)) return;
+    if (isOwnerOfThisHotel) return;
     loadRooms();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, isOwnerOfThisHotel]);
 
   const handleBook = async (roomId: number) => {
+    if (isOwnerOfThisHotel) return;
+
     if (!dateFrom || !dateTo) {
       alert("Выбери даты");
       return;
     }
+
     if (dateFrom >= dateTo) {
       alert("Дата заезда должна быть раньше даты выезда");
       return;
     }
+
     if (dateFrom < today) {
       alert("Нельзя бронировать даты в прошлом");
       return;
     }
+
     if (bookingRoomId !== null) return;
 
     try {
@@ -186,9 +237,20 @@ export default function HotelPage() {
       return;
     }
 
-    const allowed_species = newAllowedSpecies.split(",").map((s) => s.trim()).filter(Boolean);
-    const vaccinations_required = newVaccinations.split(",").map((s) => s.trim()).filter(Boolean);
-    const diet_supported = newDietSupported.split(",").map((s) => s.trim()).filter(Boolean);
+    const allowed_species = newAllowedSpecies
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const vaccinations_required = newVaccinations
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const diet_supported = newDietSupported
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     try {
       await createRoom(hotelId, {
@@ -281,9 +343,20 @@ export default function HotelPage() {
   const saveEditRoom = async () => {
     if (!editingId) return;
 
-    const allowed_species = editAllowedSpecies.split(",").map((s) => s.trim()).filter(Boolean);
-    const vaccinations_required = editVaccinations.split(",").map((s) => s.trim()).filter(Boolean);
-    const diet_supported = editDietSupported.split(",").map((s) => s.trim()).filter(Boolean);
+    const allowed_species = editAllowedSpecies
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const vaccinations_required = editVaccinations
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const diet_supported = editDietSupported
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     try {
       await updateRoom(hotelId, editingId, {
@@ -315,6 +388,7 @@ export default function HotelPage() {
 
   const handleDeleteRoom = async (roomId: number) => {
     if (!confirm("Удалить комнату?")) return;
+
     try {
       await deleteRoom(hotelId, roomId);
       await loadRooms();
@@ -329,6 +403,7 @@ export default function HotelPage() {
       alert("Выбери бронирование");
       return;
     }
+
     if (!reviewText.trim()) {
       alert("Напиши текст отзыва");
       return;
@@ -356,6 +431,7 @@ export default function HotelPage() {
       alert("Напиши ответ");
       return;
     }
+
     try {
       await replyReview(reviewId, { owner_reply: replyText.trim() });
       setReplyingReviewId(null);
@@ -373,9 +449,11 @@ export default function HotelPage() {
         <section className="hotel-card hotel-hero">
           <div className="hotel-hero__top">
             <div>
-              <h1 className="hotel-hero__title">Отель </h1>
+              <h1 className="hotel-hero__title">{hotel?.title ?? "Отель"}</h1>
               <p className="hotel-hero__subtitle">
-                Комнаты, бронирование и отзывы об отеле
+                {isOwnerOfThisHotel
+                  ? "Управление комнатами вашего отеля"
+                  : "Комнаты, бронирование и отзывы об отеле"}
               </p>
             </div>
 
@@ -383,49 +461,53 @@ export default function HotelPage() {
               <button
                 type="button"
                 className="hotel-btn hotel-btn--ghost"
-                onClick={() => navigate("/hotels")}
+                onClick={() => navigate("/")}
               >
                 К отелям
               </button>
 
-              <button
-                type="button"
-                className="hotel-btn hotel-btn--secondary"
-                onClick={() => navigate("/bookings")}
-              >
-                Мои бронирования
-              </button>
+              {!isOwnerOfThisHotel && (
+                <button
+                  type="button"
+                  className="hotel-btn hotel-btn--secondary"
+                  onClick={() => navigate("/bookings")}
+                >
+                  Мои бронирования
+                </button>
+              )}
             </div>
           </div>
         </section>
 
-        <section className="hotel-card">
-          <h2 className="hotel-section-title">Даты бронирования</h2>
+        {!isOwnerOfThisHotel && (
+          <section className="hotel-card">
+            <h2 className="hotel-section-title">Даты бронирования</h2>
 
-          <div className="hotel-form-grid">
-            <div className="hotel-field">
-              <label className="hotel-label">Дата заезда</label>
-              <input
-                className="hotel-input"
-                type="date"
-                value={dateFrom}
-                min={today}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
+            <div className="hotel-form-grid">
+              <div className="hotel-field">
+                <label className="hotel-label">Дата заезда</label>
+                <input
+                  className="hotel-input"
+                  type="date"
+                  value={dateFrom}
+                  min={today}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                />
+              </div>
 
-            <div className="hotel-field">
-              <label className="hotel-label">Дата выезда</label>
-              <input
-                className="hotel-input"
-                type="date"
-                value={dateTo}
-                min={dateFrom || today}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+              <div className="hotel-field">
+                <label className="hotel-label">Дата выезда</label>
+                <input
+                  className="hotel-input"
+                  type="date"
+                  value={dateTo}
+                  min={dateFrom || today}
+                  onChange={(e) => setDateTo(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {message && <div className="hotel-message">{message}</div>}
 
@@ -638,16 +720,18 @@ export default function HotelPage() {
                       </div>
 
                       <div className="hotel-actions">
-                        <button
-                          type="button"
-                          className="hotel-btn hotel-btn--primary"
-                          onClick={() => handleBook(r.id)}
-                          disabled={bookingRoomId === r.id}
-                        >
-                          {bookingRoomId === r.id ? "Бронирую..." : "Забронировать"}
-                        </button>
+                        {!isOwnerOfThisHotel && (
+                          <button
+                            type="button"
+                            className="hotel-btn hotel-btn--primary"
+                            onClick={() => handleBook(r.id)}
+                            disabled={bookingRoomId === r.id}
+                          >
+                            {bookingRoomId === r.id ? "Бронирую..." : "Забронировать"}
+                          </button>
+                        )}
 
-                        {isAdmin && (
+                        {canManageRooms && (
                           <>
                             <button
                               type="button"
@@ -778,149 +862,151 @@ export default function HotelPage() {
           </div>
         </section>
 
-        <section className="hotel-card">
-          <h2 className="hotel-section-title">Отзывы</h2>
+        {!isOwnerOfThisHotel && (
+          <section className="hotel-card">
+            <h2 className="hotel-section-title">Отзывы</h2>
 
-          <div className="hotel-review-create">
-            <h3 className="hotel-subtitle">Оставить отзыв</h3>
+            <div className="hotel-review-create">
+              <h3 className="hotel-subtitle">Оставить отзыв</h3>
 
-            {myBookingsForThisHotel.length === 0 ? (
-              <p className="hotel-muted">
-                У тебя нет бронирований для этого отеля — отзыв оставить нельзя.
-              </p>
-            ) : (
-              <>
-                <div className="hotel-form-grid">
-                  <div className="hotel-field">
-                    <label className="hotel-label">Бронирование</label>
-                    <select
-                      className="hotel-input"
-                      value={reviewBookingId}
-                      onChange={(e) =>
-                        setReviewBookingId(e.target.value === "" ? "" : Number(e.target.value))
-                      }
+              {myBookingsForThisHotel.length === 0 ? (
+                <p className="hotel-muted">
+                  У тебя нет бронирований для этого отеля — отзыв оставить нельзя.
+                </p>
+              ) : (
+                <>
+                  <div className="hotel-form-grid">
+                    <div className="hotel-field">
+                      <label className="hotel-label">Бронирование</label>
+                      <select
+                        className="hotel-input"
+                        value={reviewBookingId}
+                        onChange={(e) =>
+                          setReviewBookingId(e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                      >
+                        <option value="">— выбери —</option>
+                        {myBookingsForThisHotel.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            #{b.id} (room_id={b.room_id}) {b.date_from} → {b.date_to}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="hotel-field">
+                      <label className="hotel-label">Оценка</label>
+                      <select
+                        className="hotel-input"
+                        value={reviewRating}
+                        onChange={(e) => setReviewRating(Number(e.target.value))}
+                      >
+                        {[5, 4, 3, 2, 1].map((x) => (
+                          <option key={x} value={x}>
+                            {x}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="hotel-field hotel-field--wide">
+                      <label className="hotel-label">Текст отзыва</label>
+                      <textarea
+                        className="hotel-textarea"
+                        value={reviewText}
+                        onChange={(e) => setReviewText(e.target.value)}
+                        placeholder="Текст отзыва..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="hotel-actions">
+                    <button
+                      type="button"
+                      className="hotel-btn hotel-btn--primary"
+                      onClick={handleCreateReview}
                     >
-                      <option value="">— выбери —</option>
-                      {myBookingsForThisHotel.map((b) => (
-                        <option key={b.id} value={b.id}>
-                          #{b.id} (room_id={b.room_id}) {b.date_from} → {b.date_to}
-                        </option>
-                      ))}
-                    </select>
+                      Отправить отзыв
+                    </button>
                   </div>
+                </>
+              )}
+            </div>
 
-                  <div className="hotel-field">
-                    <label className="hotel-label">Оценка</label>
-                    <select
-                      className="hotel-input"
-                      value={reviewRating}
-                      onChange={(e) => setReviewRating(Number(e.target.value))}
-                    >
-                      {[5, 4, 3, 2, 1].map((x) => (
-                        <option key={x} value={x}>
-                          {x}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="hotel-field hotel-field--wide">
-                    <label className="hotel-label">Текст отзыва</label>
-                    <textarea
-                      className="hotel-textarea"
-                      value={reviewText}
-                      onChange={(e) => setReviewText(e.target.value)}
-                      placeholder="Текст отзыва..."
-                    />
-                  </div>
-                </div>
-
-                <div className="hotel-actions">
-                  <button
-                    type="button"
-                    className="hotel-btn hotel-btn--primary"
-                    onClick={handleCreateReview}
-                  >
-                    Отправить отзыв
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="hotel-reviews-list">
-            {reviews.length === 0 ? (
-              <p className="hotel-muted">Пока нет отзывов.</p>
-            ) : (
-              reviews.map((r) => (
-                <article key={r.id} className="hotel-review-card">
-                  <div className="hotel-review-card__head">
-                    <div className="hotel-review-card__rating">Оценка: {r.rating}/5</div>
-                    <div className="hotel-review-card__date">
-                      {new Date(r.created_at).toLocaleString()}
+            <div className="hotel-reviews-list">
+              {reviews.length === 0 ? (
+                <p className="hotel-muted">Пока нет отзывов.</p>
+              ) : (
+                reviews.map((r) => (
+                  <article key={r.id} className="hotel-review-card">
+                    <div className="hotel-review-card__head">
+                      <div className="hotel-review-card__rating">Оценка: {r.rating}/5</div>
+                      <div className="hotel-review-card__date">
+                        {new Date(r.created_at).toLocaleString()}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="hotel-review-card__text">{r.text}</div>
+                    <div className="hotel-review-card__text">{r.text}</div>
 
-                  {r.owner_reply && (
-                    <div className="hotel-review-reply">
-                      <div className="hotel-review-reply__label">Ответ отеля</div>
-                      <div>{r.owner_reply}</div>
-                    </div>
-                  )}
+                    {r.owner_reply && (
+                      <div className="hotel-review-reply">
+                        <div className="hotel-review-reply__label">Ответ отеля</div>
+                        <div>{r.owner_reply}</div>
+                      </div>
+                    )}
 
-                  {isAdmin && (
-                    <div className="hotel-review-admin">
-                      {replyingReviewId === r.id ? (
-                        <>
-                          <textarea
-                            className="hotel-textarea"
-                            value={replyText}
-                            onChange={(e) => setReplyText(e.target.value)}
-                            placeholder="Ответ владельца/админа..."
-                          />
-                          <div className="hotel-actions">
-                            <button
-                              type="button"
-                              className="hotel-btn hotel-btn--primary"
-                              onClick={() => handleReplyReview(r.id)}
-                            >
-                              Отправить ответ
-                            </button>
-                            <button
-                              type="button"
-                              className="hotel-btn hotel-btn--ghost"
-                              onClick={() => {
-                                setReplyingReviewId(null);
-                                setReplyText("");
-                              }}
-                            >
-                              Отмена
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className="hotel-btn hotel-btn--secondary"
-                          onClick={() => {
-                            setReplyingReviewId(r.id);
-                            setReplyText("");
-                          }}
-                        >
-                          Ответить
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </article>
-              ))
-            )}
-          </div>
-        </section>
+                    {canManageRooms && (
+                      <div className="hotel-review-admin">
+                        {replyingReviewId === r.id ? (
+                          <>
+                            <textarea
+                              className="hotel-textarea"
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              placeholder="Ответ владельца/админа..."
+                            />
+                            <div className="hotel-actions">
+                              <button
+                                type="button"
+                                className="hotel-btn hotel-btn--primary"
+                                onClick={() => handleReplyReview(r.id)}
+                              >
+                                Отправить ответ
+                              </button>
+                              <button
+                                type="button"
+                                className="hotel-btn hotel-btn--ghost"
+                                onClick={() => {
+                                  setReplyingReviewId(null);
+                                  setReplyText("");
+                                }}
+                              >
+                                Отмена
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="hotel-btn hotel-btn--secondary"
+                            onClick={() => {
+                              setReplyingReviewId(r.id);
+                              setReplyText("");
+                            }}
+                          >
+                            Ответить
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                ))
+              )}
+            </div>
+          </section>
+        )}
 
-        {isAdmin && (
+        {canManageRooms && (
           <section className="hotel-card">
             <h2 className="hotel-section-title">Добавить комнату</h2>
 

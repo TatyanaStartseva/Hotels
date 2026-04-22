@@ -27,7 +27,6 @@ class RoomAddRequest(BaseModel):
 
 class RoomAdd(RoomAddRequest):
     hotel_id: int
-    available: int | None = None
 
 
 class Room(RoomAdd):

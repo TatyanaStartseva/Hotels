@@ -5,6 +5,13 @@ export type LoginRequest = {
   password: string;
 };
 
+export type MeResponse = {
+  id: number;
+  email: string;
+  is_admin: boolean;
+  is_hotel_owner: boolean;
+};
+
 export async function loginUser(data: LoginRequest) {
   const res = await api.post("/auth/login", {
     email: data.email,
@@ -30,7 +37,7 @@ export async function registerUser(data: LoginRequest) {
   return res.data;
 }
 
-export async function getMe() {
+export async function getMe(): Promise<MeResponse> {
   const res = await api.get("/auth/me");
   return res.data;
 }

@@ -1,4 +1,4 @@
-import "./HotelsPage.css"
+import "./HotelsPage.css";
 import { useEffect, useMemo, useState } from "react";
 import {
   getHotels,
@@ -12,6 +12,7 @@ import { getMe } from "../api/auth";
 import { getMyPets, type Pet } from "../api/pets";
 import { searchRooms, type RoomSearchOut } from "../api/roomsSearch";
 import AdBanner from "../components/AdBanner";
+
 type SpeciesOption = { label: string; value: string };
 type ConditionOption = { label: string; value: string };
 
@@ -93,6 +94,7 @@ export default function HotelsPage() {
   const [newImageUrl, setNewImageUrl] = useState("");
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isHotelOwner, setIsHotelOwner] = useState(false);
   const [isLogged, setIsLogged] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -133,11 +135,13 @@ export default function HotelsPage() {
       const me = await getMe();
       setIsLogged(true);
       setIsAdmin(me.is_admin === true);
+      setIsHotelOwner(me.is_hotel_owner === true);
       console.log("ME:", me);
     } catch (e) {
       console.log("Не залогинен или ошибка /auth/me", e);
       setIsLogged(false);
       setIsAdmin(false);
+      setIsHotelOwner(false);
     }
   };
 
@@ -157,7 +161,6 @@ export default function HotelsPage() {
     const pet = pets.find((p) => p.id === selectedPetId);
     if (!pet) return;
 
-    // @ts-ignore
     setSpecies((pet as any).species ?? "");
 
     setTMin(pet.temperature_min ?? "");
@@ -463,7 +466,6 @@ export default function HotelsPage() {
   return (
     <div className="hotels-page">
       <div className="hotels-page__layout">
-        {/* ЛЕВАЯ РЕКЛАМА */}
         <aside className="hotels-page__sidebar">
           <div className="hotels-page__sidebar-sticky">
             <AdBanner />
@@ -471,7 +473,6 @@ export default function HotelsPage() {
           </div>
         </aside>
 
-        {/* ОСНОВНОЙ КОНТЕНТ */}
         <main className="hotels-page__content">
           <section className="hotels-card hotels-hero">
             <div className="hotels-hero__top">
@@ -483,7 +484,6 @@ export default function HotelsPage() {
               </div>
 
               <div className="hotels-hero__actions">
-
                 <button
                   type="button"
                   className="hotels-btn hotels-btn--ghost"
@@ -507,22 +507,44 @@ export default function HotelsPage() {
                 >
                   Мои бронирования
                 </button>
+
                 <button
-  type="button"
-  className="hotels-btn hotels-btn--secondary"
-  onClick={() => navigate("/plans")}
->
-  Подписки
-</button>
+                  type="button"
+                  className="hotels-btn hotels-btn--secondary"
+                  onClick={() => navigate("/plans")}
+                >
+                  Подписки
+                </button>
+
+                {(isHotelOwner || isAdmin) && (
+                  <button
+                    type="button"
+                    className="hotels-btn hotels-btn--primary"
+                    onClick={() => navigate("/owner/hotels")}
+                  >
+                    Мои отели
+                  </button>
+                )}
+
                 {isAdmin && (
-    <button
-      type="button"
-      className="hotels-btn hotels-btn--primary"
-      onClick={() => navigate("/admin/ads")}
-    >
-      Управление рекламой
-    </button>
-  )}
+                  <button
+                    type="button"
+                    className="hotels-btn hotels-btn--primary"
+                    onClick={() => navigate("/admin/ads")}
+                  >
+                    Управление рекламой
+                  </button>
+                )}
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="hotels-btn hotels-btn--secondary"
+                    onClick={() => navigate("/admin/users")}
+                  >
+                    Пользователи
+                  </button>
+                )}
               </div>
             </div>
           </section>
@@ -878,8 +900,8 @@ export default function HotelsPage() {
                             {h.title_ru?.trim() ? h.title_ru : h.title}
                           </div>
                           <div className="hotels-item-card__location">
-                              {h.location_ru?.trim() ? h.location_ru : h.location}
-                            </div>
+                            {h.location_ru?.trim() ? h.location_ru : h.location}
+                          </div>
                         </div>
                       </Link>
 
@@ -909,7 +931,6 @@ export default function HotelsPage() {
           )}
         </main>
 
-        {/* ПРАВАЯ РЕКЛАМА */}
         <aside className="hotels-page__sidebar">
           <div className="hotels-page__sidebar-sticky">
             <AdBanner />
