@@ -270,7 +270,7 @@ async def test_users_repository_get_user_with_hashed_password_returns_schema(mon
         hashed_password="hashed",
         is_admin=False,
     )
-    session = FakeSession([FakeResult(one_value=user_obj)])
+    session = FakeSession([FakeResult(one_or_none_value=user_obj)])
     repo = UsersRepository(session)
 
     result = await repo.get_user_with_hashed_password("user@example.com")
