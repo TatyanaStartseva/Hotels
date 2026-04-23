@@ -13,7 +13,7 @@ def test_review_add_accepts_valid_rating(rating):
     review = ReviewAdd(
         booking_id=1,
         rating=rating,
-        text='Ок'
+        text='Ок!'
     )
 
     assert review.rating == rating
