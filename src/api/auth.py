@@ -8,17 +8,33 @@ router = APIRouter(prefix='/auth',tags=['Авторизация и аутенф�
 
 
 @router.post("/register")
-async def register_user(
-        data: UserRequestAdd,db: DBDep
-):
+async def register_user(data: UserRequestAdd, db: DBDep):
+    email = data.email.lower().strip()
+
+    existing_user = await db.users.get_one_or_none(email=email)
+    if existing_user:
+        raise HTTPException(
+            status_code=409,
+            detail="Пользователь с таким email уже существует",
+        )
+
     hashed_password = AuthService().hash_password(data.password)
+
     try:
-        new_user_data = UserAdd(email=data.email, hashed_password=hashed_password)
+        new_user_data = UserAdd(
+            email=email,
+            hashed_password=hashed_password,
+        )
         await db.users.add(new_user_data)
         await db.commit()
-    except IntegrityError:
+
+    except IntegrityError as e:
         await db.rollback()
-        raise HTTPException(status_code=409, detail="Пользователь с таким email уже существует")
+        print("REGISTER IntegrityError:", repr(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Ошибка базы данных при регистрации. Проверь миграции и таблицу users.",
+        )
 
     return {"status": "OK"}
 

@@ -122,10 +122,14 @@ export default function HotelsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+      localStorage.removeItem("selectedPetId");
     loadAll();
     checkMe();
     loadPets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const savedPetId = localStorage.getItem("selectedPetId");
+    if (savedPetId) {
+      setSelectedPetId(Number(savedPetId));
+    }
   }, []);
 
   const checkMe = async () => {
@@ -458,6 +462,7 @@ export default function HotelsPage() {
     setDietType("");
     setDietDetails("");
     setFeedings("");
+    localStorage.removeItem("selectedPetId");
   };
 
   return (
@@ -535,11 +540,11 @@ export default function HotelsPage() {
                 <label className="hotels-label">Город</label>
                 <div className="hotels-inline-action">
                   <input
-                    className="hotels-input"
-                    placeholder="Город (Москва, Moscow, MOW...)"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                  />
+  className="hotels-input"
+  placeholder="Город (Москва, Moscow, MOW...)"
+  value={city}
+  onChange={(e) => setCity(e.target.value)}
+/>
                   <button
                     type="button"
                     className="hotels-btn hotels-btn--primary"
@@ -589,9 +594,16 @@ export default function HotelsPage() {
                 <select
                   className="hotels-select"
                   value={selectedPetId}
-                  onChange={(e) =>
-                    setSelectedPetId(e.target.value === "" ? "" : Number(e.target.value))
-                  }
+                  onChange={(e) => {
+  const value = e.target.value === "" ? "" : Number(e.target.value);
+  setSelectedPetId(value);
+
+  if (value === "") {
+    localStorage.removeItem("selectedPetId");
+  } else {
+    localStorage.setItem("selectedPetId", String(value));
+  }
+}}
                 >
                   <option value="">— не выбран (ввод вручную) —</option>
                   {pets.map((p) => (

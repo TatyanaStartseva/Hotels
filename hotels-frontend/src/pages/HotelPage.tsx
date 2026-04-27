@@ -5,7 +5,7 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { getRooms, createRoom, deleteRoom, updateRoom } from "../api/rooms";
 import type { Room } from "../api/rooms";
-
+import { getMyPets } from "../api/pets";
 import { createBooking, getMyBookings } from "../api/bookings";
 import type { Booking } from "../api/bookings";
 
@@ -24,11 +24,11 @@ export default function HotelPage() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-
+  const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookingRoomId, setBookingRoomId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
+  const [pets, setPets] = useState<any[]>([]);
   const [newTitle, setNewTitle] = useState("");
   const [newPrice, setNewPrice] = useState<number | "">("");
   const [newQuantity, setNewQuantity] = useState<number | "">("");
@@ -151,6 +151,12 @@ export default function HotelPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFrom, dateTo]);
 
+  useEffect(() => {
+  getMyPets()
+    .then((res) => setPets(res.data))
+    .catch(() => setPets([]));
+}, []);
+
   const handleBook = async (roomId: number) => {
     if (!dateFrom || !dateTo) {
       alert("Выбери даты");
@@ -168,7 +174,14 @@ export default function HotelPage() {
 
     try {
       setBookingRoomId(roomId);
-      await createBooking({ room_id: roomId, date_from: dateFrom, date_to: dateTo });
+      const savedPetId = localStorage.getItem("selectedPetId");
+
+      await createBooking({
+          room_id: roomId,
+          date_from: dateFrom,
+          date_to: dateTo,
+          pet_id:  savedPetId ? Number(savedPetId) : null,
+        });
       await loadRooms();
       await loadMyBookings();
       alert("Бронь создана");

@@ -22,6 +22,7 @@ export type BookingCreate = {
   date_to?: string;
   start_date?: string;
   end_date?: string;
+  pet_id?: number | null;
 };
 
 export async function getMyBookings() {

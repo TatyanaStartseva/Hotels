@@ -11,6 +11,7 @@ class UserAdd(BaseModel):
     email: EmailStr
     hashed_password: str
     is_admin: bool = False
+    subscription_status: str = "free"
 
 
 class User(BaseModel):
