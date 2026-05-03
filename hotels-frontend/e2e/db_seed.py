@@ -1,18 +1,25 @@
-"""Test data helper for Playwright E2E.
-Run from hotels-frontend folder: python e2e/db_seed.py seed_hotel_room E2E_LABEL
-It writes directly to PostgreSQL only to prepare deterministic data.
-The tested actions themselves still go through browser -> frontend -> backend -> DB -> frontend.
-"""
+"""Test data helper for Playwright E2E."""
+
 import asyncio
 import json
 import sys
+import uuid
 from pathlib import Path
+
+from passlib.context import CryptContext
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from sqlalchemy import text  # noqa: E402
 from src.database import async_session_maker  # noqa: E402
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
 
 async def fix_users_sequence() -> None:
     async with async_session_maker() as session:
@@ -24,6 +31,41 @@ async def fix_users_sequence() -> None:
             )
         """))
         await session.commit()
+
+
+async def create_admin_user() -> None:
+    email = f"admin_{uuid.uuid4().hex[:10]}@test.ru"
+    password = "secret123"
+    hashed_password = hash_password(password)
+
+    async with async_session_maker() as session:
+        await session.execute(
+            text("""
+                INSERT INTO users (
+                    email,
+                    hashed_password,
+                    is_admin
+                )
+                VALUES (
+                    :email,
+                    :hashed_password,
+                    true
+                )
+            """),
+            {
+                "email": email,
+                "hashed_password": hashed_password,
+            },
+        )
+
+        await session.commit()
+
+    print(json.dumps({
+        "email": email,
+        "password": password,
+    }, ensure_ascii=False))
+
+
 async def seed_hotel_room(label: str) -> None:
     title = f"E2E Hotel {label}"
     location = "MOW"
@@ -111,6 +153,10 @@ async def main() -> None:
 
     if command == "fix_users_sequence":
         await fix_users_sequence()
+        return
+
+    if command == "create_admin_user":
+        await create_admin_user()
         return
 
     raise SystemExit(f"Unknown command: {command}")

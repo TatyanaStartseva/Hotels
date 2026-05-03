@@ -14,16 +14,16 @@ async def create_ad(
 ):
     weight = weight_by_plan(payload.plan_name)
 
-    obj = await db.ads.add({
-        "owner_id": admin_id,
-        "title": payload.title,
-        "description": payload.description,
-        "image_url": payload.image_url,
-        "target_url": payload.target_url,
-        "is_active": payload.is_active,
-        "plan_name": payload.plan_name,
-        "weight": weight,
-    })
+    obj = await db.ads.create_ad(
+        owner_id=admin_id,
+        title=payload.title,
+        description=payload.description,
+        image_url=payload.image_url,
+        target_url=payload.target_url,
+        is_active=payload.is_active,
+        plan_name=payload.plan_name,
+        weight=weight,
+    )
     await db.commit()
     return AdOut.model_validate(obj, from_attributes=True)
 

@@ -58,7 +58,10 @@ class AdsRepository(BaseRepository):
         return res.scalars().all()
 
     async def update_ad(self, ad_id: int, data: dict):
-        obj = await self.get_one_or_none(id=ad_id)
+        q = select(self.model).where(self.model.id == ad_id)
+        res = await self.session.execute(q)
+        obj = res.scalars().one_or_none()
+
         if not obj:
             return None
 
@@ -66,13 +69,46 @@ class AdsRepository(BaseRepository):
             setattr(obj, key, value)
 
         await self.session.flush()
+        await self.session.refresh(obj)
+
         return obj
 
     async def delete_ad(self, ad_id: int):
-        obj = await self.get_one_or_none(id=ad_id)
+        q = select(self.model).where(self.model.id == ad_id)
+        res = await self.session.execute(q)
+        obj = res.scalars().one_or_none()
+
         if not obj:
             return False
 
         await self.session.delete(obj)
         await self.session.flush()
+
         return True
+
+    async def create_ad(
+        self,
+        owner_id: int,
+        title: str,
+        description: str | None,
+        image_url: str | None,
+        target_url: str | None,
+        is_active: bool,
+        plan_name: str,
+        weight: int,
+    ):
+        obj = AdsOrm(
+            owner_id=owner_id,
+            title=title,
+            description=description,
+            image_url=image_url,
+            target_url=target_url,
+            is_active=is_active,
+            plan_name=plan_name,
+            weight=weight,
+        )
+
+        self.session.add(obj)
+        await self.session.flush()
+
+        return obj
