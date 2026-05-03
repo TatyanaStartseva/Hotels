@@ -71,7 +71,39 @@ class FakeAdsRepo:
     async def delete_ad(self, ad_id):
         self.deleted.append(ad_id)
         return ad_id in self.items
+    async def create_ad(
+        self,
+        owner_id,
+        title,
+        description,
+        image_url,
+        target_url,
+        is_active,
+        plan_name,
+        weight,
+    ):
+        payload = {
+            "owner_id": owner_id,
+            "title": title,
+            "description": description,
+            "image_url": image_url,
+            "target_url": target_url,
+            "is_active": is_active,
+            "plan_name": plan_name,
+            "weight": weight,
+        }
 
+        self.last_add_payload = payload
+
+        obj = SimpleNamespace(
+            id=2,
+            created_at=datetime(2026, 1, 2),
+            **payload,
+        )
+
+        self.items[obj.id] = obj
+
+        return obj
 
 class FakeUsersRepo:
     def __init__(self, users):
