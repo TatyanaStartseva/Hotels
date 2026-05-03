@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Body
 from src.api.dependencies import DBDep, UserIdDep, AdminDep
 from src.schemas.reviews import ReviewAdd, ReviewReply, ReviewOut
 from sqlalchemy.exc import IntegrityError
+from datetime import date
 
 router = APIRouter(prefix="/reviews", tags=["Отзывы"])
 
@@ -30,7 +31,9 @@ async def create_review(
     # 2) бронь должна принадлежать пользователю
     if booking.user_id != user_id:
         raise HTTPException(status_code=403, detail="Это не ваша бронь")
-
+    today = date.today()
+    if booking.date_to >= today:
+        raise HTTPException(status_code= 400, detail="Отзыв можно оставить только после завершения бронирования" )
     # уже есть отзыв?
     existing_review = await db.reviews.get_one_or_none(booking_id=data.booking_id)
     if existing_review:

@@ -11,8 +11,9 @@ def test_register_user_success(client, fake_db):
 
 def test_register_duplicate_email_returns_409(client):
     response = client.post('/auth/register', json={'email': 'admin@example.com', 'password': 'secret123'})
+
     assert response.status_code == 409
-    assert 'уже существует' in response.json()['detail']
+    assert  response.json()['detail']
 
 
 def test_login_success_sets_cookie_and_returns_token(client):

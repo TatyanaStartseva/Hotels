@@ -7,6 +7,9 @@ import { getMyBookings, deleteBooking } from "../api/bookings";
 type Booking = {
   id: number;
   room_id?: number;
+  pet_id?: number | null;
+  user_id?: number;
+  price?: number;
   hotel_title?: string;
   pet_name?: string;
   date_from?: string;
@@ -23,6 +26,18 @@ export default function BookingsPage() {
   useEffect(() => {
     loadBookings();
   }, []);
+
+  const getBookingStatus = (booking: Booking) => {
+  if (!booking.date_from || !booking.date_to) return "Не указано";
+
+  const today = new Date();
+  const dateFrom = new Date(booking.date_from);
+  const dateTo = new Date(booking.date_to);
+
+  if (today < dateFrom) return "Запланировано";
+  if (today >= dateFrom && today <= dateTo) return "Активно";
+  return "Завершено";
+};
 
   const loadBookings = async () => {
     setMessage(null);
@@ -96,7 +111,7 @@ export default function BookingsPage() {
                       {booking.hotel_title || `Бронирование #${booking.id}`}
                     </h3>
                     <p className="bookings-item__subtitle">
-                      Питомец: {booking.pet_name || "Не указано"}
+                      Питомец: {booking.pet_name || (booking.pet_id ? `ID ${booking.pet_id}` : "Не указано")}
                     </p>
                   </div>
 
@@ -122,7 +137,7 @@ export default function BookingsPage() {
                   <div className="bookings-box">
                     <div className="bookings-box__label">Статус</div>
                     <div className="bookings-box__value">
-                      {booking.status || "Не указано"}
+                      {booking.status || getBookingStatus(booking)}
                     </div>
                   </div>
 

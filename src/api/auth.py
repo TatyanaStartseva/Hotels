@@ -32,7 +32,7 @@ async def register_user(data: UserRequestAdd, db: DBDep):
         await db.rollback()
         print("REGISTER IntegrityError:", repr(e))
         raise HTTPException(
-            status_code=500,
+            status_code=409,
             detail="Ошибка базы данных при регистрации. Проверь миграции и таблицу users.",
         )
 

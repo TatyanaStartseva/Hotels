@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -6,6 +7,15 @@ from fastapi import HTTPException
 
 from src.api import reviews as reviews_api
 from src.schemas.reviews import ReviewAdd, ReviewReply
+
+
+def past_booking(user_id=2, room_id=7):
+    return SimpleNamespace(
+        id=10,
+        user_id=user_id,
+        room_id=room_id,
+        date_to=date.today() - timedelta(days=1),
+    )
 
 
 @pytest.mark.asyncio
@@ -22,7 +32,7 @@ async def test_list_reviews_delegates_to_repository():
 @pytest.mark.asyncio
 async def test_create_review_returns_404_when_booking_missing():
     db = SimpleNamespace(
-        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=2, room_id=7))),
+        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=None)),
         rooms=SimpleNamespace(get_room=AsyncMock(return_value=None)),
         reviews=SimpleNamespace(
             get_one_or_none=AsyncMock(return_value=None),
@@ -39,14 +49,15 @@ async def test_create_review_returns_404_when_booking_missing():
         )
 
     assert exc.value.status_code == 404
-    assert 'Комната не найдена' in exc.value.detail
+    assert 'Бронь не найдена' in exc.value.detail
+    db.rooms.get_room.assert_not_awaited()
     db.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_create_review_returns_403_when_booking_belongs_to_another_user():
     db = SimpleNamespace(
-        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=99, room_id=7))),
+        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=past_booking(user_id=99))),
         rooms=SimpleNamespace(get_room=AsyncMock()),
         reviews=SimpleNamespace(create=AsyncMock()),
         commit=AsyncMock(),
@@ -68,7 +79,7 @@ async def test_create_review_returns_403_when_booking_belongs_to_another_user():
 @pytest.mark.asyncio
 async def test_create_review_returns_404_when_room_missing():
     db = SimpleNamespace(
-        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=2, room_id=7))),
+        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=past_booking())),
         rooms=SimpleNamespace(get_room=AsyncMock(return_value=None)),
         reviews=SimpleNamespace(
             get_one_or_none=AsyncMock(return_value=None),
@@ -87,6 +98,7 @@ async def test_create_review_returns_404_when_room_missing():
     assert exc.value.status_code == 404
     assert 'Комната не найдена' in exc.value.detail
     db.reviews.create.assert_not_awaited()
+    db.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -103,7 +115,7 @@ async def test_create_review_success_uses_room_hotel_id_and_commits():
         owner_reply_at=None,
     )
     db = SimpleNamespace(
-        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=SimpleNamespace(id=10, user_id=2, room_id=7))),
+        bookings=SimpleNamespace(get_by_id=AsyncMock(return_value=past_booking())),
         rooms=SimpleNamespace(get_room=AsyncMock(return_value=SimpleNamespace(id=7, hotel_id=77))),
         reviews=SimpleNamespace(
             get_one_or_none=AsyncMock(return_value=None),
