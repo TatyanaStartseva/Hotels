@@ -104,6 +104,14 @@ test("10. Полный CRUD-функционал управления рекла
   await page.locator("select").selectOption("premium");
   await page.getByPlaceholder(/краткое описание/i).fill(adDescription);
 
+  // Важно: тестовая реклама создаётся выключенной.
+  // Иначе общий баннер приложения может вызвать /ads/random,
+  // создать запись в ad_impressions и backend не сможет удалить ad по FK.
+  const activeCheckbox = page.locator('input[type="checkbox"]');
+  if (await activeCheckbox.isChecked()) {
+    await activeCheckbox.uncheck();
+  }
+
   const urlInputs = page.locator('input[placeholder="https://..."]');
   await urlInputs.nth(0).fill(imageUrl);
   await urlInputs.nth(1).fill(targetUrl);
