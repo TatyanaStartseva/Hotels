@@ -66,13 +66,15 @@ async function loginViaUi(page: Page, email: string, password: string) {
 
 test.beforeEach(async ({ page }) => {
   await page.context().clearCookies();
+
   await page.addInitScript(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
   });
 });
 
-test(" Администратор входит в систему и видит раздел управления рекламой", async ({ page }) => {
+test("10. Полный CRUD-функционал управления рекламой через административный интерфейс", async ({ page }) => {
+  // Предусловие: в системе создан пользователь с правами администратора.
   const admin = createAdminUser();
 
   await loginViaUi(page, admin.email, admin.password);
@@ -92,21 +94,11 @@ test(" Администратор входит в систему и видит �
 
   await expect(page).toHaveURL(/\/admin\/ads/);
   await expect(page.getByRole("heading", { name: /управление рекламой/i })).toBeVisible();
-});
-
-test(" Администратор создаёт рекламу: UI отправляет POST, backend сохраняет запись, список обновляется", async ({ page }) => {
-  const admin = createAdminUser();
 
   const adTitle = unique("E2E Реклама");
   const adDescription = "Тестовое объявление, созданное администратором";
   const imageUrl = "https://example.com/e2e-ad.png";
   const targetUrl = "https://example.com";
-
-  await loginViaUi(page, admin.email, admin.password);
-
-  await page.goto("/admin/ads");
-
-  await expect(page.getByRole("heading", { name: /управление рекламой/i })).toBeVisible();
 
   await page.getByPlaceholder(/например: скидка/i).fill(adTitle);
   await page.locator("select").selectOption("premium");
@@ -144,49 +136,19 @@ test(" Администратор создаёт рекламу: UI отправ
   await expect(page.locator("body")).toContainText(/тариф: premium/i);
   await expect(page.locator("body")).toContainText(/вес: 3/i);
 
-  const adsResponse = await apiGet(page, "/ads");
-  expect(adsResponse.status()).toBe(200);
+  const adsAfterCreateResponse = await apiGet(page, "/ads");
+  expect(adsAfterCreateResponse.status()).toBe(200);
 
-  const ads = await adsResponse.json();
-
+  const adsAfterCreate = await adsAfterCreateResponse.json();
   expect(
-    ads.some((ad: any) => ad.id === createdAd.id && ad.title === adTitle)
+    adsAfterCreate.some((ad: any) => ad.id === createdAd.id && ad.title === adTitle)
   ).toBeTruthy();
-});
 
-test(" Администратор редактирует рекламу: PATCH меняет данные в backend и frontend показывает новые значения", async ({ page }) => {
-  const admin = createAdminUser();
-
-  const adTitle = unique("E2E Edit Ad");
   const updatedTitle = unique("E2E Edited Ad");
   const updatedDescription = "Описание после редактирования";
 
-  await loginViaUi(page, admin.email, admin.password);
-
-  await page.goto("/admin/ads");
-
-  await page.getByPlaceholder(/например: скидка/i).fill(adTitle);
-  await page.locator("select").selectOption("basic");
-  await page.getByPlaceholder(/краткое описание/i).fill("Первичное описание");
-
-  const createResponsePromise = page.waitForResponse(
-    (res) =>
-      res.url().endsWith("/ads") &&
-      res.request().method() === "POST"
-  );
-
-  await page.getByRole("button", { name: /^добавить рекламу$/i }).click();
-
-  const createResponse = await createResponsePromise;
-  expect(createResponse.status()).toBeLessThan(300);
-
-  const createdAd = await createResponse.json();
-
-  await expect(page.locator("body")).toContainText(adTitle);
-
-  const adCard = page.locator(".admin-ads-item", { hasText: adTitle });
-
-  await adCard.getByRole("button", { name: /редактировать/i }).click();
+  const createdAdCard = page.locator(".admin-ads-item", { hasText: adTitle });
+  await createdAdCard.getByRole("button", { name: /редактировать/i }).click();
 
   await expect(page.getByRole("heading", { name: /редактировать рекламу/i })).toBeVisible();
 
@@ -212,7 +174,7 @@ test(" Администратор редактирует рекламу: PATCH �
 
   const updatedAd = JSON.parse(patchBody);
 
-    expect(updatedAd.title).toBe(updatedTitle);
+  expect(updatedAd.title).toBe(updatedTitle);
   expect(updatedAd.description).toBe(updatedDescription);
   expect(updatedAd.plan_name).toBe("vip");
   expect(updatedAd.weight).toBe(8);
@@ -223,34 +185,6 @@ test(" Администратор редактирует рекламу: PATCH �
   await expect(page.locator("body")).toContainText(updatedDescription);
   await expect(page.locator("body")).toContainText(/тариф: vip/i);
   await expect(page.locator("body")).toContainText(/вес: 8/i);
-});
-
-test("Администратор удаляет рекламу: DELETE удаляет запись из backend и она исчезает из интерфейса", async ({ page }) => {
-  const admin = createAdminUser();
-
-  const adTitle = unique("E2E Delete Ad");
-
-  await loginViaUi(page, admin.email, admin.password);
-
-  await page.goto("/admin/ads");
-
-  await page.getByPlaceholder(/например: скидка/i).fill(adTitle);
-  await page.getByPlaceholder(/краткое описание/i).fill("Объявление для удаления");
-
-  const createResponsePromise = page.waitForResponse(
-    (res) =>
-      res.url().endsWith("/ads") &&
-      res.request().method() === "POST"
-  );
-
-  await page.getByRole("button", { name: /^добавить рекламу$/i }).click();
-
-  const createResponse = await createResponsePromise;
-  expect(createResponse.status()).toBeLessThan(300);
-
-  const createdAd = await createResponse.json();
-
-  await expect(page.locator("body")).toContainText(adTitle);
 
   page.once("dialog", async (dialog) => {
     expect(dialog.message()).toMatch(/удалить рекламу/i);
@@ -263,8 +197,8 @@ test("Администратор удаляет рекламу: DELETE удал�
       res.request().method() === "DELETE"
   );
 
-  const adCard = page.locator(".admin-ads-item", { hasText: adTitle });
-  await adCard.getByRole("button", { name: /удалить/i }).click();
+  const updatedAdCard = page.locator(".admin-ads-item", { hasText: updatedTitle });
+  await updatedAdCard.getByRole("button", { name: /удалить/i }).click();
 
   const deleteResponse = await deleteResponsePromise;
   const deleteBody = await deleteResponse.text();
@@ -274,14 +208,11 @@ test("Администратор удаляет рекламу: DELETE удал�
     `Реклама не удалилась. Status=${deleteResponse.status()}, body=${deleteBody}`
   ).toBeLessThan(300);
 
-  await expect(page.locator("body")).not.toContainText(adTitle);
+  await expect(page.locator("body")).not.toContainText(updatedTitle);
 
-  const adsResponse = await apiGet(page, "/ads");
-  expect(adsResponse.status()).toBe(200);
+  const adsAfterDeleteResponse = await apiGet(page, "/ads");
+  expect(adsAfterDeleteResponse.status()).toBe(200);
 
-  const ads = await adsResponse.json();
-
-  expect(
-    ads.some((ad: any) => ad.id === createdAd.id)
-  ).toBeFalsy();
+  const adsAfterDelete = await adsAfterDeleteResponse.json();
+  expect(adsAfterDelete.some((ad: any) => ad.id === createdAd.id)).toBeFalsy();
 });
