@@ -1,8 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy import select, or_
 from sqlalchemy.dialects.postgresql import JSONB
 import sqlalchemy as sa
-
+import json
 from src.api.dependencies import DBDep, UserIdDep
 from src.models.rooms import RoomsOrm
 from src.models.hotels import HotelsOrm
@@ -26,15 +26,14 @@ def _vacc_names(vaccinations: list | None) -> list[str]:
 @router.get("/search")
 async def rooms_search(
     db: DBDep,
-    q: str | None = None,  # город или название
+    q: str | None = None,
 
-    # фильтры по питомцу
     species: str | None = None,
     temperature_min: float | None = None,
     temperature_max: float | None = None,
     humidity_min: float | None = None,
     humidity_max: float | None = None,
-    conditions: str | None = None,  # текст/ключевое слово, ищем в room_conditions
+    conditions: str | None = None,
 
     diet_type: str | None = None,
     feedings_per_day: int | None = None,
@@ -42,7 +41,7 @@ async def rooms_search(
     license_required: bool | None = None,
     cohabitation_allowed: bool | None = None,
 
-    vaccinations: list[str] | None = None,  # vaccinations=a&vaccinations=b
+    vaccinations: list[str] | None = Query(None),
 ):
     stmt = select(RoomsOrm, HotelsOrm).join(HotelsOrm, HotelsOrm.id == RoomsOrm.hotel_id)
 
@@ -101,9 +100,22 @@ async def rooms_search(
         stmt = stmt.where(RoomsOrm.cohabitation_allowed.is_(True))
 
     if hasattr(RoomsOrm, "vaccinations_required") and vaccinations is not None:
-        vacc_list = [v.strip() for v in vaccinations if v and v.strip()]
+        vacc_list: list[str] = []
+
+        for item in vaccinations:
+            if not item:
+                continue
+
+            # поддерживает и так:
+            # vaccinations=rabies&vaccinations=complex
+            # и так:
+            # vaccinations=rabies, complex
+            parts = [part.strip() for part in item.split(",") if part.strip()]
+            vacc_list.extend(parts)
+
         if vacc_list:
-            user_json = sa.cast(sa.literal(vacc_list), JSONB)
+            user_json = sa.cast(sa.literal(json.dumps(vacc_list)), JSONB)
+
             stmt = stmt.where(
                 or_(
                     RoomsOrm.vaccinations_required.is_(None),
@@ -120,16 +132,28 @@ async def rooms_search(
     for room, hotel in rows:
         out.append(
             {
-                "id": room.id,
-                "hotel_id": room.hotel_id,
-                "title": room.title,
-                "price": room.price,
-                "quantity": room.quantity,
+                "id": hotel.id,
+                "hotel_id": hotel.id,
+
+                "title": hotel.title,
+                "title_ru": hotel.title_ru,
+                "location": hotel.location,
+                "location_ru": hotel.location_ru,
+                "images": hotel.images,
+
+                "room_id": room.id,
+                "room_title": room.title,
+                "room_price": room.price,
+                "room_quantity": room.quantity,
                 "available": getattr(room, "available", None),
+
                 "hotel": {
                     "id": hotel.id,
                     "title": hotel.title,
+                    "title_ru": hotel.title_ru,
                     "location": hotel.location,
+                    "location_ru": hotel.location_ru,
+                    "images": hotel.images,
                 },
             }
         )

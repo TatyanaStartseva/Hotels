@@ -7,7 +7,6 @@ class RoomAddRequest(BaseModel):
     price: int
     quantity: int
 
-    # ✅ правила/условия для питомцев
     allowed_species: list[str] | None = None
     temp_min: float | None = None
     temp_max: float | None = None
@@ -27,7 +26,6 @@ class RoomAddRequest(BaseModel):
 
 class RoomAdd(RoomAddRequest):
     hotel_id: int
-    available: int | None = None
 
 
 class Room(RoomAdd):

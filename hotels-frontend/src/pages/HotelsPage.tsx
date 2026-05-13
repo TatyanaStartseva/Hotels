@@ -265,28 +265,47 @@ export default function HotelsPage() {
   };
 
   const hotelsFromRoomsSearch = (rooms: RoomSearchOut[]): Hotel[] => {
-    const map = new Map<number, Hotel>();
+  const map = new Map<number, Hotel>();
 
-    for (const r of rooms) {
-      const h = r.hotel;
-      const titleValue = (h as any).title ?? (h as any).name ?? `Отель #${h.id}`;
-      const locationValue = (h as any).location ?? "";
+  for (const r of rooms) {
+    const h = (r as any).hotel ?? r;
 
-      if (!map.has(h.id)) {
-        map.set(
-          h.id,
-          {
-            id: h.id,
-            title: titleValue,
-            location: locationValue,
-          } as Hotel
-        );
-      }
+    const hotelId = h.id ?? (r as any).hotel_id;
+    const titleValue = h.title ?? (r as any).title ?? h.name ?? `Отель #${hotelId}`;
+    const locationValue = h.location ?? (r as any).location ?? "";
+
+    const imagesValue =
+      h.images ??
+      (r as any).images ??
+      [];
+
+    const titleRuValue =
+      h.title_ru ??
+      (r as any).title_ru ??
+      "";
+
+    const locationRuValue =
+      h.location_ru ??
+      (r as any).location_ru ??
+      "";
+
+    if (!map.has(hotelId)) {
+      map.set(
+        hotelId,
+        {
+          id: hotelId,
+          title: titleValue,
+          title_ru: titleRuValue,
+          location: locationValue,
+          location_ru: locationRuValue,
+          images: imagesValue,
+        } as Hotel
+      );
     }
+  }
 
-    return Array.from(map.values());
-  };
-
+  return Array.from(map.values());
+};
   const searchByCity = async () => {
     setMessage(null);
     const text = city.trim();

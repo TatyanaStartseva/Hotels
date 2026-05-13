@@ -27,21 +27,14 @@ async def get_hotels(
 ):
     per_page = pagination.per_page or 5
 
-    # сначала пробуем локальные алиасы (RU/EN -> IATA)
     if location:
         city_raw = location.strip()
         location_variants = {city_raw}
 
         city_code = normalize_city_input(city_raw)
 
-        if not city_code:
-            am = AmadeusClient()
-            city_code = await am.resolve_city_code(city_raw)
-
         if city_code:
             location_variants.add(city_code)
-
-
     else:
         location_variants = None
 
@@ -52,7 +45,6 @@ async def get_hotels(
         limit=per_page,
         offset=per_page * (pagination.page - 1),
     )
-
 
 @router.delete("/{hotel_id}",summary='Удаление отеля из базы данных')
 async def delete_hotel(hotel_id:int,admin_id: AdminDep,db : DBDep ):
@@ -80,37 +72,21 @@ async def post_hotels(
 ):
     city_raw = hotel_data.location.strip()
 
-    #  1) сначала локально RU/EN -> IATA
-    city_code = normalize_city_input(city_raw)
-
-    # 2) если не получилось — пробуем Amadeus
-    if not city_code:
-        am = AmadeusClient()
-        city_code = await am.resolve_city_code(city_raw)
-
-    if not city_code:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Не удалось определить IATA-код для '{city_raw}'",
-        )
-
-    # 3) сохраняем ВСЕ поля (важно: images не потерять)
     payload = {
         "title": hotel_data.title,
-        "location": city_code,
+        "location": city_raw,
         "images": hotel_data.images,
     }
 
-    #  если у тебя уже добавлены поля варианта 2 — сохраним русские значения
     if hasattr(HotelsOrm, "location_ru"):
         payload["location_ru"] = city_raw
+
     if hasattr(HotelsOrm, "title_ru"):
-        payload["title_ru"] = hotel_data.title  # или введёшь отдельно
+        payload["title_ru"] = hotel_data.title
 
-    normalized = HotelAdd(**payload)
-
-    hotel = await db.hotels.add(normalized)
+    hotel = await db.hotels.add(HotelAdd(**payload))
     await db.commit()
+
     return {"status": "ok", "saved": hotel}
 
 

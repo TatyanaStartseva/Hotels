@@ -19,6 +19,7 @@ from src.api.rooms_search import router as rooms_search_router
 from src.api.reviews import router as reviews_router
 from src.api.ads import router as router_ads
 from src.api.billing import router as router_billing
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(docs_url=None)
 
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(reviews_router)
 app.include_router(rooms_search_router)
 app.include_router(router_rooms_search)
